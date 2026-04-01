@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cookie Policy — Radr</title>
+  <link rel="icon" href="assets/images/Radr icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.cdnfonts.com/css/aileron" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --blue: #0C5DE9;
+      --blue-light: #3A7EF2;
+      --blue-dark: #0A4FC5;
+      --night: #121212;
+      --cream: #FFFFF7;
+      --bg-dark: #0A0A0A;
+      --bg-card: #1A1A1A;
+      --bg-card-hover: #222222;
+      --text-primary: #FFFFF7;
+      --text-secondary: #A0A0A0;
+      --text-muted: #666666;
+      --border: #2A2A2A;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 0 clamp(1.5rem, 5vw, 4rem);
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(42, 42, 42, 0.5);
+    }
+
+    .nav-logo img {
+      height: 28px;
+      width: auto;
+    }
+
+    .nav-back {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      transition: color 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .nav-back:hover { color: var(--text-primary); }
+
+    .legal {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 120px clamp(1.5rem, 5vw, 4rem) 80px;
+    }
+
+    .legal-label {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.75rem;
+    }
+
+    .legal h1 {
+      font-family: 'Aileron', sans-serif;
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 0.75rem;
+      color: var(--cream);
+    }
+
+    .legal .last-updated {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 3rem;
+    }
+
+    .legal h2 {
+      font-family: 'Aileron', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--cream);
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.01em;
+    }
+
+    .legal h3 {
+      font-family: 'Aileron', sans-serif;
+      font-size: 1.0625rem;
+      font-weight: 600;
+      color: var(--cream);
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .legal p {
+      color: var(--text-secondary);
+      font-size: 0.9375rem;
+      line-height: 1.75;
+      margin-bottom: 1rem;
+    }
+
+    .legal ul {
+      color: var(--text-secondary);
+      font-size: 0.9375rem;
+      line-height: 1.75;
+      margin-bottom: 1rem;
+      padding-left: 1.5rem;
+    }
+
+    .legal ul li {
+      margin-bottom: 0.25rem;
+    }
+
+    .legal a {
+      color: var(--blue-light);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .legal a:hover { color: var(--blue); }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 3rem clamp(1.5rem, 5vw, 4rem);
+    }
+
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .footer-left img {
+      height: 22px;
+      width: auto;
+    }
+
+    .footer-left span {
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.8125rem;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover { color: var(--text-primary); }
+
+    @media (max-width: 768px) {
+      .footer-inner { flex-direction: column; text-align: center; }
+      .footer-links { flex-wrap: wrap; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="nav-logo"><img src="assets/images/Radr blue logotype.png" alt="Radr"></a>
+    <a href="index.html" class="nav-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back to Home
+    </a>
+  </nav>
+
+  <main class="legal">
+    <p class="legal-label">Legal</p>
+    <h1>Cookie Policy</h1>
+    <p class="last-updated">Last updated: February 20, 2026</p>
+
+    <h2>Information About Our Use of Cookies</h2>
+    <p>The Radr app and website (the "Platform") use cookies and similar technologies to distinguish you from other users. This helps us provide a better experience, understand how the Platform is used, and improve our features over time.</p>
+    <p>By continuing to use Radr, you agree to our use of cookies as described in this policy. You can manage or disable cookies at any time through your browser or device settings, though doing so may affect certain features of the Platform.</p>
+
+    <h2>What Are Cookies?</h2>
+    <p>Cookies are small files of letters and numbers that are stored on your device when you visit a website or use certain app features. They allow the Platform to recognise your device and remember information about your preferences or activity.</p>
+    <p>Cookies help us ensure the Platform functions correctly and allow us to improve performance and usability.</p>
+
+    <h2>Types of Cookies We Use</h2>
+
+    <h3>Strictly Necessary Cookies</h3>
+    <p>These cookies are essential for the operation of the Platform. They enable core features such as:</p>
+    <ul>
+      <li>Logging into your account</li>
+      <li>Accessing secure areas</li>
+      <li>Saving preferences and settings</li>
+      <li>Maintaining basic app functionality</li>
+    </ul>
+    <p>Without these cookies, certain parts of Radr may not work properly.</p>
+
+    <h3>Analytical / Performance Cookies</h3>
+    <p>These cookies help us understand how users interact with the Platform so we can improve it. For example, they allow us to:</p>
+    <ul>
+      <li>Estimate usage patterns and audience size</li>
+      <li>See how users navigate features</li>
+      <li>Improve usability and performance</li>
+      <li>Measure the effectiveness of updates and campaigns</li>
+    </ul>
+    <p>We may use trusted analytics providers (such as Google Analytics or similar tools) to help collect this information in aggregated, non-identifiable form.</p>
+
+    <h3>Functionality Cookies</h3>
+    <p>These cookies allow the Platform to remember your preferences and personalize your experience. For example, they may be used to:</p>
+    <ul>
+      <li>Recognize you when you return to the Platform</li>
+      <li>Remember settings such as notifications or display preferences</li>
+      <li>Support calendar integrations or saved activity plans</li>
+    </ul>
+
+    <h3>Targeting and Advertising Cookies</h3>
+    <p>These cookies record information about how you use the Platform, such as pages visited or features interacted with. This helps us:</p>
+    <ul>
+      <li>Make the Platform more relevant to your interests</li>
+      <li>Improve marketing effectiveness</li>
+      <li>Provide more useful recommendations or updates</li>
+    </ul>
+    <p>We may work with trusted partners who assist with analytics or marketing, and they may use cookies for these limited purposes.</p>
+
+    <h2>Managing Cookies</h2>
+    <p>Most web browsers and mobile devices allow you to control cookie settings. You can choose to:</p>
+    <ul>
+      <li>Accept all cookies</li>
+      <li>Reject all cookies</li>
+      <li>Allow only certain types of cookies</li>
+    </ul>
+    <p>Please note that disabling cookies may limit your ability to use certain features of Radr.</p>
+    <p>You can usually manage cookies through your browser settings (such as Chrome, Safari, Firefox, or Edge) or through your device privacy settings.</p>
+    <p>Radr does not currently respond to "Do Not Track" (DNT) browser signals.</p>
+
+    <h2>Third-Party Cookies</h2>
+    <p>Some features of the Platform rely on third-party services (such as analytics, messaging infrastructure, or social sharing tools). These third parties may place their own cookies, which are governed by their own privacy policies.</p>
+    <p>We do not control how third parties use cookies, and you should review their policies for more information on how they collect and use data.</p>
+
+    <h2>Social Sharing Features</h2>
+    <p>The Platform may include features that allow you to share content through external services or connect with social platforms. These services may set cookies that can collect information about your interactions with the Platform.</p>
+    <p>We do not control these cookies, and their use is governed by the respective third-party provider's policies.</p>
+
+    <h2>Changes to This Cookie Policy</h2>
+    <p>We may update this Cookie Policy from time to time to reflect changes in technology, legal requirements, or Platform features. If we make significant changes, we will notify users within the app or by other appropriate means.</p>
+    <p>Your continued use of Radr after updates means you accept the revised Cookie Policy.</p>
+
+    <h2>Contact</h2>
+    <p>If you have any questions about this Cookie Policy or our use of cookies, please contact us at:</p>
+    <p><a href="mailto:getradrapp@gmail.com">getradrapp@gmail.com</a></p>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-left">
+        <img src="assets/images/Radr blue logotype.png" alt="Radr">
+        <span>&copy; 2026 Radr. All rights reserved.</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="terms.html">Terms of Use</a></li>
+        <li><a href="privacy.html">Privacy Policy</a></li>
+        <li><a href="cookies.html">Cookie Policy</a></li>
+        <li><a href="mailto:getradrapp@gmail.com">Contact</a></li>
+      </ul>
+    </div>
+  </footer>
+
+</body>
+</html>

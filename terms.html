@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms & Conditions — Radr</title>
+  <link rel="icon" href="assets/images/Radr icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.cdnfonts.com/css/aileron" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --blue: #0C5DE9;
+      --blue-light: #3A7EF2;
+      --blue-dark: #0A4FC5;
+      --night: #121212;
+      --cream: #FFFFF7;
+      --bg-dark: #0A0A0A;
+      --bg-card: #1A1A1A;
+      --bg-card-hover: #222222;
+      --text-primary: #FFFFF7;
+      --text-secondary: #A0A0A0;
+      --text-muted: #666666;
+      --border: #2A2A2A;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ——— NAV ——— */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 0 clamp(1.5rem, 5vw, 4rem);
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(42, 42, 42, 0.5);
+    }
+
+    .nav-logo img {
+      height: 28px;
+      width: auto;
+    }
+
+    .nav-back {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      transition: color 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .nav-back:hover { color: var(--text-primary); }
+
+    /* ——— LEGAL CONTENT ——— */
+    .legal {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 120px clamp(1.5rem, 5vw, 4rem) 80px;
+    }
+
+    .legal-label {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.75rem;
+    }
+
+    .legal h1 {
+      font-family: 'Aileron', sans-serif;
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 0.75rem;
+      color: var(--cream);
+    }
+
+    .legal .last-updated {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 3rem;
+    }
+
+    .legal h2 {
+      font-family: 'Aileron', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--cream);
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.01em;
+    }
+
+    .legal p {
+      color: var(--text-secondary);
+      font-size: 0.9375rem;
+      line-height: 1.75;
+      margin-bottom: 1rem;
+    }
+
+    .legal ul {
+      color: var(--text-secondary);
+      font-size: 0.9375rem;
+      line-height: 1.75;
+      margin-bottom: 1rem;
+      padding-left: 1.5rem;
+    }
+
+    .legal ul li {
+      margin-bottom: 0.25rem;
+    }
+
+    .legal a {
+      color: var(--blue-light);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .legal a:hover { color: var(--blue); }
+
+    /* ——— FOOTER ——— */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 3rem clamp(1.5rem, 5vw, 4rem);
+    }
+
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .footer-left img {
+      height: 22px;
+      width: auto;
+    }
+
+    .footer-left span {
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.8125rem;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover { color: var(--text-primary); }
+
+    @media (max-width: 768px) {
+      .footer-inner { flex-direction: column; text-align: center; }
+      .footer-links { flex-wrap: wrap; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="nav-logo"><img src="assets/images/Radr blue logotype.png" alt="Radr"></a>
+    <a href="index.html" class="nav-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back to Home
+    </a>
+  </nav>
+
+  <main class="legal">
+    <p class="legal-label">Legal</p>
+    <h1>Terms & Conditions</h1>
+    <p class="last-updated">Last updated: February 20, 2026</p>
+
+    <h2>1. About Radr</h2>
+    <p>Radr is a social planning app that allows users to schedule, share, message, and coordinate workouts and movement activities with friends. Radr does not host, organize, or supervise physical activities. Users are solely responsible for deciding which activities they attend and for their own safety while participating.</p>
+    <p>By accessing or using Radr (the "Platform"), you agree to these Terms & Conditions. If you do not agree, you should not use the Platform.</p>
+
+    <h2>2. Eligibility</h2>
+    <p>You must be at least 13 years old (or the minimum legal age in your jurisdiction) to use Radr. By using the Platform, you confirm that you meet this requirement and have the legal capacity to enter into these Terms.</p>
+    <p>If you are using Radr on behalf of an organization, you confirm that you have the authority to bind that organization to these Terms.</p>
+
+    <h2>3. Your Account</h2>
+    <p>You are responsible for maintaining the confidentiality of your account and login credentials. You agree to:</p>
+    <ul>
+      <li>Provide accurate and up-to-date information</li>
+      <li>Keep your account secure</li>
+      <li>Notify us immediately of any unauthorized use</li>
+    </ul>
+    <p>We reserve the right to suspend or terminate accounts that violate these Terms.</p>
+
+    <h2>4. How Radr Works</h2>
+    <p>Radr allows users to:</p>
+    <ul>
+      <li>Create and schedule personal workouts or movement plans</li>
+      <li>Share plans with friends or selected users</li>
+      <li>Message other users directly</li>
+      <li>Participate in group chats related to shared activities</li>
+      <li>Optionally share location information to coordinate movement</li>
+    </ul>
+    <p>Radr is a coordination and planning tool only. We do not verify, supervise, or control the activities that users plan or attend.</p>
+
+    <h2>5. User Responsibilities & Safety</h2>
+    <p>You are solely responsible for:</p>
+    <ul>
+      <li>Deciding which activities to attend</li>
+      <li>Assessing your physical readiness and health</li>
+      <li>Evaluating the safety of any location or meetup</li>
+      <li>Interacting responsibly with other users</li>
+    </ul>
+    <p>Radr does not provide fitness, medical, or safety advice. Participation in any activity is at your own risk.</p>
+    <p>If you choose to meet another user in person, you do so voluntarily and at your own risk.</p>
+
+    <h2>6. Messaging & Group Chats</h2>
+    <p>Radr may allow users to communicate through direct messages and group chats. By using these features, you agree:</p>
+    <ul>
+      <li>Not to harass, threaten, or abuse other users</li>
+      <li>Not to send spam or unsolicited promotions</li>
+      <li>Not to share harmful, illegal, or inappropriate content</li>
+    </ul>
+    <p>We reserve the right to monitor, review, or remove messages where required to enforce these Terms or comply with legal obligations.</p>
+
+    <h2>7. Location Sharing & Map Features</h2>
+    <p>Radr may offer features that allow you to share your location or view the location of others to help coordinate activities.</p>
+    <p>Location sharing is optional and controlled by you. You understand that:</p>
+    <ul>
+      <li>Sharing location may allow other users to see your approximate real-time or scheduled activity location</li>
+      <li>You can disable location sharing at any time in your device or app settings</li>
+    </ul>
+    <p>You are responsible for how and when you choose to share your location.</p>
+
+    <h2>8. User-Generated Content</h2>
+    <p>You retain ownership of any content you create or share on Radr, including:</p>
+    <ul>
+      <li>Workout plans</li>
+      <li>Messages and chats</li>
+      <li>Profile information</li>
+      <li>Photos or descriptions</li>
+    </ul>
+    <p>By posting content, you grant Radr a worldwide, non-exclusive, royalty-free license to use, display, and distribute that content within the Platform for the purpose of operating and improving the service.</p>
+    <p>You are solely responsible for the content you share.</p>
+
+    <h2>9. Prohibited Conduct</h2>
+    <p>You agree not to:</p>
+    <ul>
+      <li>Use Radr for illegal or harmful activities</li>
+      <li>Harass, stalk, or threaten other users</li>
+      <li>Share misleading or dangerous activity plans</li>
+      <li>Impersonate another person or organization</li>
+      <li>Attempt to access accounts or data without authorization</li>
+    </ul>
+    <p>We may remove content or suspend accounts that violate these rules.</p>
+
+    <h2>10. No Supervision of Activities</h2>
+    <p>Radr does not organize, supervise, or control any workouts, meetups, or movement activities listed on the Platform. All activities are user-generated and informal unless explicitly stated otherwise.</p>
+    <p>Radr is not responsible for:</p>
+    <ul>
+      <li>The safety, quality, or legality of any activity</li>
+      <li>The conduct of other users</li>
+      <li>Any injuries or incidents that occur during activities</li>
+    </ul>
+    <p>You acknowledge that physical activity involves inherent risks.</p>
+
+    <h2>11. Future Paid Features</h2>
+    <p>Certain features of Radr may become paid or subscription-based in the future. If this occurs, we will clearly communicate pricing, billing terms, and cancellation policies within the app.</p>
+    <p>Your continued use of any paid feature will be subject to the applicable payment terms presented at that time.</p>
+
+    <h2>12. Intellectual Property</h2>
+    <p>All rights, title, and interest in the Radr Platform, including design, branding, logos, and software, are owned by Radr or its licensors. You may not copy, modify, or distribute any part of the Platform without prior written consent.</p>
+
+    <h2>13. Termination</h2>
+    <p>We may suspend or terminate your access to Radr if you:</p>
+    <ul>
+      <li>Violate these Terms</li>
+      <li>Engage in harmful or abusive behavior</li>
+      <li>Use the Platform in a way that poses risk to others or to the integrity of the service</li>
+    </ul>
+    <p>You may stop using Radr at any time by deleting your account.</p>
+
+    <h2>14. Disclaimers</h2>
+    <p>Radr is provided "as is" and "as available." We do not guarantee that the Platform will be uninterrupted, secure, or error-free.</p>
+    <p>We make no warranties regarding:</p>
+    <ul>
+      <li>The reliability of user-generated plans</li>
+      <li>The behavior of other users</li>
+      <li>The outcomes of any activity planned through the Platform</li>
+    </ul>
+
+    <h2>15. Limitation of Liability</h2>
+    <p>To the fullest extent permitted by law, Radr and its affiliates will not be liable for any indirect, incidental, or consequential damages arising from:</p>
+    <ul>
+      <li>Your participation in any activity</li>
+      <li>Interactions with other users</li>
+      <li>Use of or inability to use the Platform</li>
+    </ul>
+    <p>Your use of Radr is at your own risk.</p>
+
+    <h2>16. Changes to These Terms</h2>
+    <p>We may update these Terms & Conditions from time to time. If we make material changes, we will notify users within the app or by other appropriate means.</p>
+    <p>Your continued use of Radr after updates means you accept the revised Terms.</p>
+
+    <h2>17. Contact</h2>
+    <p>If you have questions about these Terms & Conditions, please contact us at:</p>
+    <p><a href="mailto:getradrapp@gmail.com">getradrapp@gmail.com</a></p>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-left">
+        <img src="assets/images/Radr blue logotype.png" alt="Radr">
+        <span>&copy; 2026 Radr. All rights reserved.</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="terms.html">Terms of Use</a></li>
+        <li><a href="privacy.html">Privacy Policy</a></li>
+        <li><a href="cookies.html">Cookie Policy</a></li>
+        <li><a href="mailto:getradrapp@gmail.com">Contact</a></li>
+      </ul>
+    </div>
+  </footer>
+
+</body>
+</html>
