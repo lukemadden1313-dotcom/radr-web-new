@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["8WR3XY4D7H.com.getradrapp.Radr"],
+        "components": [
+          { "/": "/w/*" },
+          { "/": "/u/*" },
+          { "/": "/g/*" }
+        ]
+      }
+    ]
+  }
+}
