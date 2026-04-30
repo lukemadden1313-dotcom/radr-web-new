@@ -1,61 +1,59 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { previewStyles } from "@/app/preview-styles";
+import { previewStyles, APP_STORE_URL, avatarThumb } from "@/app/preview-styles";
 
-type Props = {
-  params: Promise<{ id: string }>;
+type Props = { params: Promise<{ id: string }> };
+
+type Workout = {
+  id: string;
+  title: string;
+  start_time: string | null;
+  location: string | null;
+  category: string | null;
+  activity_name: string | null;
+  open_to_join: boolean | null;
+  deleted_at: string | null;
+  hidden_at: string | null;
+  creator_id: string;
 };
 
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/radr-calendar/id6758311100";
-const FALLBACK_AVATAR = "/assets/images/Radr icon.png";
-const LOGO_URL = "/assets/images/Radr blue logotype.png";
+type Profile = {
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+};
 
-type CategoryStyle = { color: string; icon: string };
+const AVATAR_GRADIENTS: [string, string][] = [
+  ["#4a5d8f", "#2c3a5e"],
+  ["#8f4a4a", "#5e2c2c"],
+  ["#4a8f6f", "#2c5e4a"],
+  ["#8f7a4a", "#5e4f2c"],
+  ["#5b3d8f", "#3d2c5e"],
+];
 
-function getCategoryStyle(category: string | null | undefined): CategoryStyle {
-  const c = (category || "").toLowerCase();
-  if (/run|track/.test(c)) return { color: "#F05A5A", icon: "🏃" };
-  if (/yoga|pilates|barre/.test(c)) return { color: "#9A5AF0", icon: "🧘" };
-  if (/hiit|hyrox|crossfit/.test(c)) return { color: "#F0A040", icon: "⚡" };
-  if (/cycle/.test(c)) return { color: "#2AD4D4", icon: "🚴" };
-  if (/strength|core/.test(c)) return { color: "#0C5DE9", icon: "🏋️" };
-  if (/swim/.test(c)) return { color: "#2AD472", icon: "🏊" };
-  if (/hike|climb/.test(c)) return { color: "#2AD472", icon: "🥾" };
-  if (/box|martial/.test(c)) return { color: "#F05AA0", icon: "🥊" };
-  return { color: "#0C5DE9", icon: "⚡" };
+function avatarGradient(seed: string): string {
+  const idx = (seed.charCodeAt(0) || 0) % AVATAR_GRADIENTS.length;
+  const [from, to] = AVATAR_GRADIENTS[idx];
+  return `linear-gradient(135deg, ${from}, ${to})`;
 }
 
-function hexWithAlpha(hex: string, alpha: number) {
-  const a = Math.round(alpha * 255)
-    .toString(16)
-    .padStart(2, "0");
-  return `${hex}${a}`;
-}
-
-function formatEastern(dateStr: string) {
-  const date = new Date(dateStr);
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "long",
-    month: "short",
-    day: "numeric",
+function formatLongDate(iso: string): string {
+  const d = new Date(iso);
+  const tz = "America/New_York";
+  const day = d.toLocaleString("en-US", { weekday: "long", timeZone: tz }).toUpperCase();
+  const month = d.toLocaleString("en-US", { month: "short", timeZone: tz }).toUpperCase();
+  const date = d.toLocaleString("en-US", { day: "numeric", timeZone: tz });
+  const time = d.toLocaleString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-  }).formatToParts(date);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value || "";
-  const weekday = get("weekday").toUpperCase();
-  const month = get("month").toUpperCase();
-  const day = get("day");
-  const hour = get("hour");
-  const minute = get("minute");
-  const dayPeriod = get("dayPeriod").toUpperCase();
-  return `${weekday} · ${month} ${day} · ${hour}:${minute} ${dayPeriod}`;
+    timeZone: tz,
+  });
+  return `${day} · ${month} ${date} · ${time}`;
 }
 
-function formatShortEastern(dateStr: string) {
-  const date = new Date(dateStr);
+function formatShort(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     weekday: "short",
@@ -64,68 +62,40 @@ function formatShortEastern(dateStr: string) {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-  }).format(date);
+  }).format(new Date(iso));
 }
-
-type Profile = {
-  id?: string;
-  username: string | null;
-  full_name?: string | null;
-  avatar_url: string | null;
-};
-
-type Workout = {
-  id: string;
-  title: string;
-  location: string | null;
-  start_time: string | null;
-  duration: number | null;
-  category: string | null;
-  open_to_join: boolean | null;
-  creator_id: string;
-};
-
-type Participant = {
-  user_id: string;
-  status: string;
-  profiles: Profile | null;
-};
 
 async function getWorkout(id: string) {
   const { data: workout } = await supabase
     .from("workouts")
     .select(
-      "id, title, location, start_time, duration, category, open_to_join, creator_id",
+      "id, title, start_time, location, category, activity_name, open_to_join, deleted_at, hidden_at, creator_id",
     )
     .eq("id", id)
     .single<Workout>();
 
-  if (!workout) return null;
+  if (!workout || workout.deleted_at || workout.hidden_at) return null;
 
-  const { data: creator } = await supabase
+  const { data: host } = await supabase
     .from("profiles")
-    .select("id, username, full_name, avatar_url")
+    .select("username, full_name, avatar_url")
     .eq("id", workout.creator_id)
     .single<Profile>();
 
   const { data: participantRows } = await supabase
     .from("workout_participants")
-    .select("user_id, status, profiles:user_id(username, avatar_url)")
+    .select("profiles:user_id(username, full_name, avatar_url), joined_at")
     .eq("workout_id", id)
     .eq("status", "accepted")
-    .limit(5);
+    .order("joined_at", { ascending: true });
 
-  const participants: Participant[] = (participantRows || []).map((row) => {
+  const goingAvatars: Profile[] = (participantRows || []).flatMap((row) => {
     const raw = (row as { profiles: Profile | Profile[] | null }).profiles;
-    const profile = Array.isArray(raw) ? raw[0] ?? null : raw;
-    return {
-      user_id: (row as { user_id: string }).user_id,
-      status: (row as { status: string }).status,
-      profiles: profile,
-    };
+    if (!raw) return [];
+    return Array.isArray(raw) ? raw : [raw];
   });
 
-  return { workout, creator, participants };
+  return { workout, host, goingAvatars };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -134,15 +104,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!data) {
     return {
-      title: "Workout not found — Radr",
+      title: "Workout unavailable on Radr",
       description: "This workout doesn't exist or has been removed.",
     };
   }
 
-  const { workout, creator } = data;
-  const hostName = creator?.full_name || creator?.username || "someone";
-  const image = creator?.avatar_url || FALLBACK_AVATAR;
-  const dateStr = workout.start_time ? formatShortEastern(workout.start_time) : null;
+  const { workout, host } = data;
+  const hostName = host?.full_name || host?.username || "someone";
+  const dateStr = workout.start_time ? formatShort(workout.start_time) : null;
   const description = ["Hosted by " + hostName, dateStr, workout.location]
     .filter(Boolean)
     .join(" · ");
@@ -155,16 +124,33 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       url: `/w/${id}`,
-      images: [{ url: image }],
       type: "website",
     },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [image],
-    },
+    twitter: { card: "summary_large_image", title, description },
   };
+}
+
+function AvatarImg({
+  url,
+  fallback,
+  className,
+}: {
+  url?: string | null;
+  fallback: string;
+  className?: string;
+}) {
+  if (url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={avatarThumb(url, 200) || url} alt={fallback} className={className} />;
+  }
+  return (
+    <span
+      className={`${className ?? ""} avatar-fallback`}
+      style={{ background: avatarGradient(fallback) }}
+    >
+      {(fallback || "?").charAt(0).toUpperCase()}
+    </span>
+  );
 }
 
 export default async function WorkoutPage({ params }: Props) {
@@ -175,13 +161,18 @@ export default async function WorkoutPage({ params }: Props) {
     return (
       <>
         <style dangerouslySetInnerHTML={{ __html: previewStyles }} />
+        <div className="stripe stripe-cobalt" />
         <main className="page">
           <div className="topbar">
-            <img src={LOGO_URL} alt="Radr" className="logo" />
+            <span className="brand brand-cobalt">
+              radr<span className="dot">.</span>
+            </span>
+            <span className="pill pill-cobalt">UNAVAILABLE</span>
           </div>
           <div className="not-found">
-            <p>Workout not found</p>
-            <a href={APP_STORE_URL} className="btn-secondary">
+            <h1>Workout unavailable</h1>
+            <p>This may have been removed or hidden.</p>
+            <a href={APP_STORE_URL} className="btn btn-secondary">
               Download Radr
             </a>
           </div>
@@ -190,78 +181,82 @@ export default async function WorkoutPage({ params }: Props) {
     );
   }
 
-  const { workout, creator, participants } = data;
-  const hostName = creator?.full_name || creator?.username || "someone";
-  const cat = getCategoryStyle(workout.category);
-  const titleLength = workout.title.length;
-  const titleScaleClass =
-    titleLength > 40 ? "title sm" : titleLength > 24 ? "title md" : "title";
+  const { workout, host, goingAvatars } = data;
+  const hostName = host?.full_name || host?.username || "Someone";
+  const subtitle = workout.start_time ? formatLongDate(workout.start_time) : null;
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: previewStyles }} />
+      <div className="stripe stripe-cobalt" />
       <main className="page">
         <div className="topbar">
-          <img src={LOGO_URL} alt="Radr" className="logo" />
-          {workout.open_to_join === false && (
-            <span className="pill">INVITE ONLY</span>
-          )}
+          <span className="brand brand-cobalt">
+            radr<span className="dot">.</span>
+          </span>
+          <span className="pill pill-cobalt">
+            {workout.open_to_join === false ? "INVITE ONLY" : "WORKOUT"}
+          </span>
         </div>
 
-      <div
-        className="hero"
-        style={{
-          backgroundColor: hexWithAlpha(cat.color, 0.15),
-          borderColor: hexWithAlpha(cat.color, 0.35),
-        }}
-      >
-        <span className="hero-icon" aria-hidden>
-          {cat.icon}
-        </span>
-      </div>
-
-      {workout.start_time && (
-        <p className="date">{formatEastern(workout.start_time)}</p>
-      )}
-
-      <h1 className={titleScaleClass}>{workout.title}</h1>
-
-      {workout.location && <p className="location">{workout.location}</p>}
-
-      <div className="row hosted-by">
-        <img
-          src={creator?.avatar_url || FALLBACK_AVATAR}
-          alt={hostName}
-          className="host-avatar"
-        />
-        <div className="host-meta">
-          <span className="host-label">HOSTED BY</span>
-          <span className="host-name">{hostName}</span>
-        </div>
-      </div>
-
-      {participants.length > 0 && (
-        <div className="row going">
-          <div className="avatar-stack">
-            {participants.slice(0, 5).map((p, i) => (
-              <img
-                key={p.user_id}
-                src={p.profiles?.avatar_url || FALLBACK_AVATAR}
-                alt={p.profiles?.username || "Participant"}
-                className="going-avatar"
-                style={{ marginLeft: i === 0 ? 0 : -18, zIndex: 5 - i }}
-              />
-            ))}
+        <div className="host-row">
+          <AvatarImg url={host?.avatar_url} fallback={hostName} className="host-avatar" />
+          <div className="host-meta">
+            <span className="host-label">Hosted by</span>
+            <span className="host-name">{hostName}</span>
           </div>
-          <span className="going-label">{participants.length} going</span>
         </div>
-      )}
+
+        <h1 className="title">{workout.title}</h1>
+        {subtitle && <p className="subtitle-accent subtitle-cobalt">{subtitle}</p>}
+        {workout.location && <p className="meta-line">{workout.location}</p>}
+
+        {goingAvatars.length > 0 && (
+          <>
+            <div className="divider" />
+            <p className="section-label">Going</p>
+            <div className="avatar-row">
+              {goingAvatars.slice(0, 8).map((p, i) => {
+                const name = p.full_name || p.username || "";
+                const inner = (
+                  <>
+                    <AvatarImg url={p.avatar_url} fallback={name} />
+                    {p.username && <span>@{p.username}</span>}
+                  </>
+                );
+                return p.username ? (
+                  <Link
+                    key={`${p.username}-${i}`}
+                    href={`/u/${p.username}`}
+                    className="avatar-link"
+                  >
+                    {inner}
+                  </Link>
+                ) : (
+                  <span key={i} className="avatar-link">
+                    {inner}
+                  </span>
+                );
+              })}
+              {goingAvatars.length > 8 && (
+                <span className="avatar-link">
+                  <span
+                    className="avatar-fallback"
+                    style={{ background: "#1a1a1a" }}
+                  >
+                    +{goingAvatars.length - 8}
+                  </span>
+                </span>
+              )}
+            </div>
+          </>
+        )}
 
         <div className="cta">
-          <a href={`radr://w/${id}`} className="btn-primary">
-            Join on Radr
+          <a href={`radr://w/${id}`} className="btn btn-primary btn-cobalt">
+            Open in Radr
           </a>
-          <a href={APP_STORE_URL} className="btn-secondary">
+          <a href={APP_STORE_URL} className="btn btn-secondary">
             Download Radr
           </a>
         </div>
