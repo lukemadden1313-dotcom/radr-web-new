@@ -109,10 +109,11 @@ async function getWorkout(id: string) {
   // failure keeps the workout page usable even if the group is gone.
   let group: GroupForDeepLink | null = null;
   if (workout.group_id) {
-    const { data } = await supabase
-      .rpc("get_group_for_deep_link", { p_group_id: workout.group_id })
-      .returns<GroupForDeepLink[]>();
-    group = data?.[0] ?? null;
+    const { data } = await supabase.rpc("get_group_for_deep_link", {
+      p_group_id: workout.group_id,
+    });
+    const rows = (data ?? []) as GroupForDeepLink[];
+    group = rows[0] ?? null;
   }
 
   return { workout, host, goingAvatars, group };

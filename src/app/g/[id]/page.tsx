@@ -34,13 +34,15 @@ async function getGroup(id: string) {
   // SECURITY DEFINER RPC. The RPC does not return the members list
   // (group_members RLS is preserved); we render without per-member
   // avatars on the public card.
-  const { data, error } = await supabase
-    .rpc("get_group_for_deep_link", { p_group_id: id })
-    .returns<GroupForDeepLink[]>();
+  const { data, error } = await supabase.rpc("get_group_for_deep_link", {
+    p_group_id: id,
+  });
 
-  if (error || !data || data.length === 0) return null;
+  if (error || !data) return null;
+  const rows = data as GroupForDeepLink[];
+  if (rows.length === 0) return null;
 
-  const row = data[0];
+  const row = rows[0];
   return {
     group: {
       id: row.id,
