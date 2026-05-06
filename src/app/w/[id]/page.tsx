@@ -16,12 +16,20 @@ type Workout = {
   deleted_at: string | null;
   hidden_at: string | null;
   creator_id: string;
+  group_id: string | null;
 };
 
 type Profile = {
   username: string | null;
   full_name: string | null;
   avatar_url: string | null;
+};
+
+type GroupForDeepLink = {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  member_count: number;
 };
 
 const AVATAR_GRADIENTS: [string, string][] = [
@@ -69,7 +77,7 @@ async function getWorkout(id: string) {
   const { data: workout } = await supabase
     .from("workouts")
     .select(
-      "id, title, start_time, location, category, activity_name, open_to_join, deleted_at, hidden_at, creator_id",
+      "id, title, start_time, location, category, activity_name, open_to_join, deleted_at, hidden_at, creator_id, group_id",
     )
     .eq("id", id)
     .single<Workout>();
@@ -95,7 +103,19 @@ async function getWorkout(id: string) {
     return Array.isArray(raw) ? raw : [raw];
   });
 
-  return { workout, host, goingAvatars };
+  // If the workout belongs to a group, fetch the group's public card
+  // info via the SECURITY DEFINER RPC. RLS on `groups` blocks anon reads,
+  // so we can't just join from the workouts table. Returning null on
+  // failure keeps the workout page usable even if the group is gone.
+  let group: GroupForDeepLink | null = null;
+  if (workout.group_id) {
+    const { data } = await supabase
+      .rpc("get_group_for_deep_link", { p_group_id: workout.group_id })
+      .returns<GroupForDeepLink[]>();
+    group = data?.[0] ?? null;
+  }
+
+  return { workout, host, goingAvatars, group };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -181,9 +201,10 @@ export default async function WorkoutPage({ params }: Props) {
     );
   }
 
-  const { workout, host, goingAvatars } = data;
+  const { workout, host, goingAvatars, group } = data;
   const hostName = host?.full_name || host?.username || "Someone";
   const subtitle = workout.start_time ? formatLongDate(workout.start_time) : null;
+  const groupMemberLabel = group ? (group.member_count === 1 ? "member" : "members") : null;
 
   return (
     <>
@@ -195,7 +216,11 @@ export default async function WorkoutPage({ params }: Props) {
             radr<span className="dot">.</span>
           </span>
           <span className="pill pill-cobalt">
-            {workout.open_to_join === false ? "INVITE ONLY" : "WORKOUT"}
+            {group
+              ? "GROUP WORKOUT"
+              : workout.open_to_join === false
+                ? "INVITE ONLY"
+                : "WORKOUT"}
           </span>
         </div>
 
@@ -210,6 +235,26 @@ export default async function WorkoutPage({ params }: Props) {
         <h1 className="title">{workout.title}</h1>
         {subtitle && <p className="subtitle-accent subtitle-cobalt">{subtitle}</p>}
         {workout.location && <p className="meta-line">{workout.location}</p>}
+
+        {group && (
+          <>
+            <div className="divider" />
+            <p className="section-label">Part of a group</p>
+            <Link href={`/g/${group.id}`} className="host-row">
+              <AvatarImg
+                url={group.avatar_url}
+                fallback={group.name}
+                className="host-avatar"
+              />
+              <div className="host-meta">
+                <span className="host-name">{group.name}</span>
+                <span className="host-label">
+                  {group.member_count} {groupMemberLabel} · Join the group to RSVP
+                </span>
+              </div>
+            </Link>
+          </>
+        )}
 
         {goingAvatars.length > 0 && (
           <>

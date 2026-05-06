@@ -1,20 +1,18 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { previewStyles, APP_STORE_URL, avatarThumb } from "@/app/preview-styles";
 
 type Props = { params: Promise<{ id: string }> };
 
-type Group = {
+type GroupForDeepLink = {
   id: string;
   name: string;
   avatar_url: string | null;
-};
-
-type MemberProfile = {
-  username: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
+  creator_id: string;
+  conversation_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  member_count: number;
 };
 
 const AVATAR_GRADIENTS: [string, string][] = [
@@ -32,32 +30,24 @@ function avatarGradient(seed: string): string {
 }
 
 async function getGroup(id: string) {
-  const { data: group } = await supabase
-    .from("groups")
-    .select("id, name, avatar_url")
-    .eq("id", id)
-    .single<Group>();
+  // RLS on `groups` blocks anon table reads, so route through the
+  // SECURITY DEFINER RPC. The RPC does not return the members list
+  // (group_members RLS is preserved); we render without per-member
+  // avatars on the public card.
+  const { data, error } = await supabase
+    .rpc("get_group_for_deep_link", { p_group_id: id })
+    .returns<GroupForDeepLink[]>();
 
-  if (!group) return null;
+  if (error || !data || data.length === 0) return null;
 
-  const { data: memberRows, count } = await supabase
-    .from("group_members")
-    .select("profiles:user_id(username, full_name, avatar_url), joined_at", {
-      count: "exact",
-    })
-    .eq("group_id", id)
-    .order("joined_at", { ascending: true });
-
-  const memberAvatars: MemberProfile[] = (memberRows || []).flatMap((row) => {
-    const raw = (row as { profiles: MemberProfile | MemberProfile[] | null }).profiles;
-    if (!raw) return [];
-    return Array.isArray(raw) ? raw : [raw];
-  });
-
+  const row = data[0];
   return {
-    group,
-    memberAvatars,
-    memberCount: count ?? memberAvatars.length,
+    group: {
+      id: row.id,
+      name: row.name,
+      avatar_url: row.avatar_url,
+    },
+    memberCount: row.member_count,
   };
 }
 
@@ -136,7 +126,7 @@ export default async function GroupPage({ params }: Props) {
     );
   }
 
-  const { group, memberAvatars, memberCount } = data;
+  const { group, memberCount } = data;
   const memberLabel = memberCount === 1 ? "member" : "members";
 
   return (
@@ -151,51 +141,22 @@ export default async function GroupPage({ params }: Props) {
           <span className="pill pill-green">GROUP</span>
         </div>
 
+        <div className="host-row">
+          <AvatarImg
+            url={group.avatar_url}
+            fallback={group.name}
+            className="host-avatar"
+          />
+          <div className="host-meta">
+            <span className="host-label">Group</span>
+            <span className="host-name">{group.name}</span>
+          </div>
+        </div>
+
         <h1 className="title">{group.name}</h1>
         <p className="subtitle-accent subtitle-green">
           {memberCount} {memberLabel} on Radr
         </p>
-
-        {memberAvatars.length > 0 && (
-          <>
-            <div className="divider" />
-            <p className="section-label">Members</p>
-            <div className="avatar-row">
-              {memberAvatars.slice(0, 8).map((p, i) => {
-                const name = p.full_name || p.username || "";
-                const inner = (
-                  <>
-                    <AvatarImg url={p.avatar_url} fallback={name} />
-                    {p.username && <span>@{p.username}</span>}
-                  </>
-                );
-                return p.username ? (
-                  <Link
-                    key={`${p.username}-${i}`}
-                    href={`/u/${p.username}`}
-                    className="avatar-link"
-                  >
-                    {inner}
-                  </Link>
-                ) : (
-                  <span key={i} className="avatar-link">
-                    {inner}
-                  </span>
-                );
-              })}
-              {memberAvatars.length > 8 && (
-                <span className="avatar-link">
-                  <span
-                    className="avatar-fallback"
-                    style={{ background: "#1a1a1a" }}
-                  >
-                    +{memberAvatars.length - 8}
-                  </span>
-                </span>
-              )}
-            </div>
-          </>
-        )}
 
         <div className="cta">
           <a href={`radr://g/${id}`} className="btn btn-primary btn-green">
