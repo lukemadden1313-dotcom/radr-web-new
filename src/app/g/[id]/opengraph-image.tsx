@@ -4,7 +4,7 @@ import {
   SIZE,
   CONTENT_TYPE,
   TOKENS,
-  AvatarStack,
+  Avatar,
   BrandRow,
   truncate,
   notFoundCard,
@@ -17,58 +17,38 @@ export const revalidate = 300;
 
 type Props = { params: Promise<{ id: string }> };
 
-type Group = {
+type GroupForDeepLink = {
   id: string;
   name: string;
   avatar_url: string | null;
-};
-
-type MemberProfile = {
-  username: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
+  member_count: number;
 };
 
 async function getGroup(id: string) {
-  const { data: group } = await supabase
-    .from("groups")
-    .select("id, name, avatar_url")
-    .eq("id", id)
-    .single<Group>();
-
-  if (!group) return null;
-
-  const { data: memberRows, count } = await supabase
-    .from("group_members")
-    .select("profiles:user_id(username, full_name, avatar_url), joined_at", {
-      count: "exact",
-    })
-    .eq("group_id", id)
-    .order("joined_at", { ascending: true });
-
-  const memberAvatars: MemberProfile[] = (memberRows || []).flatMap((row) => {
-    const raw = (row as { profiles: MemberProfile | MemberProfile[] | null }).profiles;
-    if (!raw) return [];
-    return Array.isArray(raw) ? raw : [raw];
+  // RLS on `groups` blocks anon table reads, so route through the
+  // SECURITY DEFINER RPC. Members list isn't returned (group_members RLS
+  // is preserved), so we render the OG image with the group avatar +
+  // member count instead of a per-member avatar stack.
+  const { data, error } = await supabase.rpc("get_group_for_deep_link", {
+    p_group_id: id,
   });
 
-  return {
-    group,
-    memberAvatars,
-    memberCount: count ?? memberAvatars.length,
-  };
+  if (error || !data) return null;
+  const rows = data as GroupForDeepLink[];
+  if (rows.length === 0) return null;
+
+  return rows[0];
 }
 
 export default async function Image({ params }: Props) {
   const { id } = await params;
-  const data = await getGroup(id);
+  const group = await getGroup(id);
 
-  if (!data) return notFoundCard("Group unavailable");
+  if (!group) return notFoundCard("Group unavailable");
 
-  const { group, memberAvatars, memberCount } = data;
   const accent = TOKENS.green;
   const accentText = TOKENS.pillText.green;
-  const memberLabel = memberCount === 1 ? "member" : "members";
+  const memberLabel = group.member_count === 1 ? "member" : "members";
 
   return new ImageResponse(
     (
@@ -94,46 +74,40 @@ export default async function Image({ params }: Props) {
         >
           <BrandRow pillLabel="GROUP" accent="green" />
 
-          {/* Title + subtitle */}
+          {/* Group avatar + name */}
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <span
-              style={{
-                fontSize: 96,
-                fontWeight: 800,
-                color: "#fff",
-                lineHeight: 1.0,
-                letterSpacing: -2,
-              }}
-            >
-              {truncate(group.name, 40)}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+              <Avatar url={group.avatar_url} fallback={group.name} size={96} />
+              <span
+                style={{
+                  fontSize: 96,
+                  fontWeight: 800,
+                  color: "#fff",
+                  lineHeight: 1.0,
+                  letterSpacing: -2,
+                }}
+              >
+                {truncate(group.name, 32)}
+              </span>
+            </div>
             <span style={{ fontSize: 32, fontWeight: 600, color: accentText, display: "flex" }}>
               <span style={{ color: "#fff", fontWeight: 700, marginRight: 8 }}>
-                {memberCount}
+                {group.member_count}
               </span>
               {memberLabel} on Radr
             </span>
           </div>
 
-          {/* Bottom: members + CTA */}
+          {/* Bottom: CTA */}
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
+              justifyContent: "flex-end",
               alignItems: "center",
               paddingTop: 28,
               borderTop: `1px solid ${TOKENS.divider}`,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-              {memberAvatars.length > 0 ? (
-                <AvatarStack avatars={memberAvatars} max={4} size={48} />
-              ) : (
-                <span style={{ fontSize: 22, color: "#666", display: "flex" }}>
-                  Be the first to join
-                </span>
-              )}
-            </div>
             <span
               style={{
                 padding: "14px 28px",

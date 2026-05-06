@@ -29,6 +29,7 @@ type Workout = {
   deleted_at: string | null;
   hidden_at: string | null;
   creator_id: string;
+  group_id: string | null;
 };
 
 type Profile = {
@@ -37,11 +38,18 @@ type Profile = {
   avatar_url: string | null;
 };
 
+type GroupForDeepLink = {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  member_count: number;
+};
+
 async function getWorkout(id: string) {
   const { data: workout } = await supabase
     .from("workouts")
     .select(
-      "id, title, start_time, location, category, activity_name, deleted_at, hidden_at, creator_id",
+      "id, title, start_time, location, category, activity_name, deleted_at, hidden_at, creator_id, group_id",
     )
     .eq("id", id)
     .single<Workout>();
@@ -67,11 +75,25 @@ async function getWorkout(id: string) {
     return Array.isArray(raw) ? raw : [raw];
   });
 
+  // Fetch the group's public card if this workout is part of one. RLS on
+  // groups blocks direct anon reads — has to go through the SECURITY
+  // DEFINER RPC. Used to show the "Group: <name>" badge in the iMessage
+  // OG card so a non-member recipient sees they need to join the group.
+  let group: GroupForDeepLink | null = null;
+  if (workout.group_id) {
+    const { data } = await supabase.rpc("get_group_for_deep_link", {
+      p_group_id: workout.group_id,
+    });
+    const rows = (data ?? []) as GroupForDeepLink[];
+    group = rows[0] ?? null;
+  }
+
   return {
     workout,
     host,
     goingAvatars,
     goingCount: goingAvatars.length,
+    group,
   };
 }
 
@@ -81,7 +103,7 @@ export default async function Image({ params }: Props) {
 
   if (!data) return notFoundCard("Workout unavailable");
 
-  const { workout, host, goingAvatars, goingCount } = data;
+  const { workout, host, goingAvatars, goingCount, group } = data;
   const accent = TOKENS.cobalt;
   const accentText = TOKENS.pillText.cobalt;
   const subtitle = workout.start_time ? formatDayTime(workout.start_time) : null;
@@ -109,7 +131,7 @@ export default async function Image({ params }: Props) {
             background: TOKENS.cardBg,
           }}
         >
-          <BrandRow pillLabel="WORKOUT" accent="cobalt" />
+          <BrandRow pillLabel={group ? "GROUP WORKOUT" : "WORKOUT"} accent="cobalt" />
 
           {/* Middle: host + title + meta */}
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -145,6 +167,18 @@ export default async function Image({ params }: Props) {
               <span style={{ fontSize: 26, color: "#999" }}>
                 {truncate(workout.location, 60)}
               </span>
+            )}
+
+            {group && (
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 4 }}>
+                <Avatar url={group.avatar_url} fallback={group.name} size={44} />
+                <span style={{ fontSize: 24, color: "#aaa", display: "flex" }}>
+                  <span style={{ color: "#fff", fontWeight: 700, marginRight: 8 }}>
+                    {truncate(group.name, 28)}
+                  </span>
+                  · join the group to RSVP
+                </span>
+              </div>
             )}
           </div>
 
