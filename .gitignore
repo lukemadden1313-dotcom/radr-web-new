@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Personal design reference material (Partiful screenshots, mockups, etc.)
+design_reference/
+Radr_assets/

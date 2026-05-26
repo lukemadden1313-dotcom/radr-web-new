@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
 import { previewStyles, APP_STORE_URL, avatarThumb } from "@/app/preview-styles";
 
 type Props = { params: Promise<{ id: string }> };
@@ -30,6 +29,44 @@ type GroupForDeepLink = {
   name: string;
   avatar_url: string | null;
   member_count: number;
+};
+
+// TEMP: flip to false once .env.local has Supabase keys
+const USE_MOCK_DATA = false;
+
+function getMockStartTime(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 3);
+  d.setHours(8, 15, 0, 0);
+  return d.toISOString();
+}
+
+const MOCK_DATA = {
+  workout: {
+    id: "test",
+    title: "Hyrox",
+    start_time: getMockStartTime(),
+    location: "Zenergy, 245 Raven Rd, Ketchum, ID",
+    category: "fitness",
+    activity_name: "Hyrox",
+    open_to_join: true,
+    deleted_at: null,
+    hidden_at: null,
+    creator_id: "mock-host-id",
+    group_id: null,
+  } satisfies Workout,
+  host: {
+    username: "lukemadden",
+    full_name: "Luke Madden",
+    avatar_url: null,
+  } satisfies Profile,
+  goingAvatars: [
+    { username: "sarahk", full_name: "Sarah Kim", avatar_url: null },
+    { username: "jordanp", full_name: "Jordan Patel", avatar_url: null },
+    { username: "mikec", full_name: "Mike Chen", avatar_url: null },
+    { username: "emilyr", full_name: "Emily Rodriguez", avatar_url: null },
+  ] satisfies Profile[],
+  group: null as GroupForDeepLink | null,
 };
 
 const AVATAR_GRADIENTS: [string, string][] = [
@@ -74,6 +111,10 @@ function formatShort(iso: string): string {
 }
 
 async function getWorkout(id: string) {
+  if (USE_MOCK_DATA) return MOCK_DATA;
+
+  const { supabase } = await import("@/lib/supabase");
+
   const { data: workout } = await supabase
     .from("workouts")
     .select(
