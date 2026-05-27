@@ -19,7 +19,7 @@ export function AvatarImg({
 }) {
   const [failed, setFailed] = useState(false);
 
-  if (failed) return <>{fallback}</>;
+  if (!src || failed) return <>{fallback}</>;
 
   return (
     // eslint-disable-next-line @next/next/no-img-element

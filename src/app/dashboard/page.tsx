@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SiteShell } from "@/components/layout/site-shell";
 import { AvatarImg } from "@/components/avatar-img";
 import { ActivityIcon } from "@/components/activity-icon";
+import BrandDot from "@/components/brand-dot";
 import {
   CURRENT_USER,
   MOCK_WORKOUTS,
@@ -57,19 +58,6 @@ function userIsParticipant(w: MockWorkout): boolean {
 
 function isUserGoing(workout: MockWorkout, user: MockUser): boolean {
   return workout.participants.some((p) => p.id === user.id);
-}
-
-// ----------------------------------------------------------------
-// Brand Dot — cobalt filled circle after italic section headers
-// ----------------------------------------------------------------
-
-function BrandDot() {
-  return (
-    <span
-      className="inline-block w-2 h-2 rounded-full ml-1 align-middle"
-      style={{ background: "var(--radr-cobalt)", transform: "translateY(-2px)" }}
-    />
-  );
 }
 
 // ----------------------------------------------------------------
@@ -490,10 +478,7 @@ export default function DashboardPage() {
             style={{ fontSize: "var(--radr-text-display)", lineHeight: 1.1 }}
           >
             <span className="italic">{firstName}</span>
-            <span
-              className="inline-block w-2.5 h-2.5 rounded-full ml-1.5 align-middle"
-              style={{ background: "var(--radr-cobalt)", transform: "translateY(-4px)" }}
-            />
+            <BrandDot size={10} />
           </h1>
           <p
             className="mt-3 text-radr-text-muted leading-relaxed"
