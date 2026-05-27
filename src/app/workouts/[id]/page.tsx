@@ -492,10 +492,12 @@ export default async function WorkoutDetailPage({ params }: Props) {
                 className="flex items-start gap-3 py-3"
                 style={i > 0 ? { borderTop: "1px solid rgba(255,255,247,0.08)" } : undefined}
               >
-                <UserAvatar user={item.actor} size={32} className="mt-0.5" />
+                <Link href={`/profile/${item.actor.username}`} className="no-underline shrink-0">
+                  <UserAvatar user={item.actor} size={32} className="mt-0.5" />
+                </Link>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm">
-                    <span className="font-medium text-radr-text">{item.actor.full_name.split(" ")[0]}</span>
+                    <Link href={`/profile/${item.actor.username}`} className="no-underline font-medium text-radr-text hover:underline">{item.actor.full_name.split(" ")[0]}</Link>
                     {" "}
                     <span className="text-radr-text-muted">{item.action}</span>
                     {item.emoji && ` ${item.emoji}`}

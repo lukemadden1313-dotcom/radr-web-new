@@ -109,13 +109,14 @@ export default function GroupsPage() {
             <span className="text-sm font-medium">Back</span>
           </Link>
 
-          {/* TODO: wire to create group flow */}
-          <button
-            className="py-1.5 px-3.5 rounded-full text-sm font-semibold text-white cursor-pointer"
-            style={{ background: "var(--radr-green)", border: "none" }}
+          {/* TODO: wire to create group flow (currently routes to general /create) */}
+          <Link
+            href="/create"
+            className="py-1.5 px-3.5 rounded-full text-sm font-semibold text-white no-underline"
+            style={{ background: "var(--radr-green)" }}
           >
             + Create
-          </button>
+          </Link>
         </div>
 
         {/* ============================================================
@@ -192,13 +193,14 @@ export default function GroupsPage() {
             <p className="text-base text-radr-text-dim italic">
               No crews yet. Start one with your people.
             </p>
-            {/* TODO: wire to create group flow */}
-            <button
-              className="mt-5 py-2.5 px-5 rounded-full text-sm font-semibold text-white cursor-pointer"
-              style={{ background: "var(--radr-green)", border: "none" }}
+            {/* TODO: wire to create group flow (currently routes to general /create) */}
+            <Link
+              href="/create"
+              className="inline-block mt-5 py-2.5 px-5 rounded-full text-sm font-semibold text-white no-underline"
+              style={{ background: "var(--radr-green)" }}
             >
               + Create your first crew
-            </button>
+            </Link>
           </div>
         )}
       </div>

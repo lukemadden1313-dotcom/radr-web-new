@@ -210,7 +210,7 @@ export default async function GroupDetailPage({ params }: Props) {
           style={{ minHeight: 48 }}
         >
           <Link
-            href="/dashboard"
+            href="/groups"
             className="flex items-center gap-1.5 text-radr-text-dim hover:text-radr-text-muted transition-colors no-underline"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -519,10 +519,12 @@ export default async function GroupDetailPage({ params }: Props) {
                 className="flex items-start gap-3 py-3"
                 style={i > 0 ? { borderTop: "1px solid rgba(255,255,247,0.08)" } : undefined}
               >
-                <UserAvatar user={item.actor} size={32} className="mt-0.5" />
+                <Link href={`/profile/${item.actor.username}`} className="no-underline shrink-0">
+                  <UserAvatar user={item.actor} size={32} className="mt-0.5" />
+                </Link>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm">
-                    <span className="font-medium text-radr-text">{item.actor.full_name.split(" ")[0]}</span>
+                    <Link href={`/profile/${item.actor.username}`} className="no-underline font-medium text-radr-text hover:underline">{item.actor.full_name.split(" ")[0]}</Link>
                     {" "}
                     <span className="text-radr-text-muted">{item.action}</span>
                   </p>

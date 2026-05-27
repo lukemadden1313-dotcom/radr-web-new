@@ -76,48 +76,23 @@ function BellIcon({ active, hasUnread }: { active: boolean; hasUnread: boolean }
   );
 }
 
-// TODO: Replace with real current-user avatar from auth context
-function UserAvatar() {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span
-        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0"
-        style={{ background: "linear-gradient(135deg, #4a5d8f, #2c3a5e)" }}
-      >
-        E
-      </span>
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-radr-text-dim"
-      >
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
-    </span>
-  );
-}
+import { AvatarMenu } from "./avatar-menu";
 
 export function TopNav() {
   const pathname = usePathname();
 
-  const isHome = pathname === "/home" || pathname === "/dashboard";
+  const isHome = pathname === "/dashboard" || pathname === "/home";
   const isExplore = pathname === "/explore";
   const isNotifications = pathname === "/notifications";
 
   return (
     <nav className="sticky top-0 z-50 h-14 flex items-center justify-between px-4 md:px-6 bg-radr-bg/90 backdrop-blur-xl border-b border-radr-border">
-      <Link href="/home" className="no-underline">
+      <Link href="/dashboard" className="no-underline">
         <RadrWordmark />
       </Link>
 
       <div className="flex items-center gap-6">
-        <Link href="/home" aria-label="Home" className="relative flex flex-col items-center">
+        <Link href="/dashboard" aria-label="Home" className="relative flex flex-col items-center">
           <HomeIcon active={isHome} />
           {isHome && (
             <span className="absolute -bottom-2 w-5 h-0.5 rounded-full bg-radr-cobalt" />
@@ -137,8 +112,7 @@ export function TopNav() {
         </Link>
       </div>
 
-      {/* TODO: Wire up user menu dropdown */}
-      <UserAvatar />
+      <AvatarMenu />
     </nav>
   );
 }
