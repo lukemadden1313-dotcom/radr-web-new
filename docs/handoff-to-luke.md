@@ -52,6 +52,20 @@ Web and iOS currently have hardcoded reference data (activities, RSVP states, no
 
 Each migration: Luke creates Supabase table seeded from the canonical doc, builds `get_*()` RPC, iOS + web update to fetch from RPC.
 
+### Messaging Strategy (Web Defers to App)
+
+**Decision (2026-05-27):** Web does NOT have a messaging UI. The only messaging-related surface on web is `/messages/[conversation_id]`, which serves as a deep-link fallback (e.g. for iMessage shares of conversation links). That page shows a clean "Open in Radr app" landing instead of a chat surface.
+
+**Rationale:** Messaging UX is mobile-first. Half-built web messaging would feel worse than no web messaging. Web's identity becomes clearer: web is for browsing, RSVPing, commenting, and sharing. The app is for messaging, notifications, and deeper social interaction.
+
+**What Luke needs:**
+- Universal Link URL scheme — confirm format for "open conversation [id]" deep link. Web buttons currently use placeholder `radr://conversation/{id}`. Update when confirmed.
+- App Store URL — placeholder "#" on web. Replace when published.
+- `get_conversation(id)` RPC — needed only for the deep-link fallback page to render the correct other-participant's avatar + name. Or this could pull from the existing share-link RPC pattern.
+
+**What Luke does NOT need:**
+- send_message, toggle_reaction, pin_conversation, mute_conversation, mark_read, delete_conversation, get_or_create_dm, get_conversations, get_messages_for_conversation. All deferred to iOS app.
+
 ### What Web Does Not Touch
 
 - Auth (Luke building in parallel — magic links, Supabase Auth, redirects)
@@ -82,6 +96,7 @@ Each migration: Luke creates Supabase table seeded from the canonical doc, build
 | `/groups` | All your groups | Built | `get_user_groups` |
 | `/settings` | Account settings | Built | `get_user_preferences`, `update_user_preference(key, value)` |
 | `/create` | 3-step workout creation | Built (visual submit only) | `create_workout(input)` — see spec below |
+| `/messages/[id]` | Deep-link fallback (open-in-app landing) | Built | `getConversation(id)` — only needs participant name + avatar for display |
 | `/w-v2/[id]` | Existing workout share page | Pre-existing | (unchanged) |
 | `/g-v2/[id]` | Existing group share page | Pre-existing | (will benefit from RPC expansion in backlog #2) |
 
@@ -168,3 +183,4 @@ All docs in `docs/ios-canonical/` are extracted from iOS code and represent the 
 - When CURRENT_USER becomes real session, what's the hook pattern (e.g. `useSession()` React context)?
 - Does iOS already have a `create_workout` RPC web should reuse?
 - Web invented helper names like `getMutualFriends`, `getSharedWorkouts`, `getWorkoutsUserCouldJoin` — do iOS-side equivalent RPCs exist with different names?
+- Universal link URL scheme for opening conversations in the iOS app — web's `/messages/[id]` fallback page needs the correct `radr://` or universal link format.

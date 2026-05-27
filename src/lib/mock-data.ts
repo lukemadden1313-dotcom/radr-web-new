@@ -84,6 +84,12 @@ function daysAgo(days: number, hour = 8, minute = 0): string {
   return daysFromNow(-days, hour, minute);
 }
 
+function minutesAgo(mins: number): string {
+  const d = new Date();
+  d.setTime(d.getTime() - mins * 60 * 1000);
+  return d.toISOString();
+}
+
 // ----------------------------------------------------------------
 // Users
 // ----------------------------------------------------------------
@@ -866,4 +872,199 @@ export function getSuggestedActivities(): Activity[] {
 
 export function getActivityByKey(key: string): Activity | undefined {
   return ACTIVITIES.find((a) => a.key === key);
+}
+
+// ----------------------------------------------------------------
+// Messages & Conversations
+// ----------------------------------------------------------------
+
+export type MockReaction = {
+  emoji: string;
+  user_id: string;
+};
+
+export type MockMessage = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  text: string;
+  created_at: string;
+  reply_to_id?: string;
+  reactions: MockReaction[];
+  is_read: boolean;
+};
+
+export type MockConversation = {
+  id: string;
+  is_group: boolean;
+  participants: MockUser[];
+  last_message: MockMessage | null;
+  unread_count: number;
+  is_pinned: boolean;
+  is_muted: boolean;
+  updated_at: string;
+};
+
+// Workout-card message encoding (matches iOS WORKOUT_CARD:: format)
+export function encodeWorkoutCard(w: MockWorkout): string {
+  return [
+    "WORKOUT_CARD",
+    w.id,
+    w.title,
+    w.start_time,
+    w.location,
+    w.activity_type ?? "other",
+    w.host.id,
+    w.booking_url ?? "",
+  ].join("::");
+}
+
+export type ParsedWorkoutCard = {
+  workout_id: string;
+  title: string;
+  start_time: string;
+  location: string;
+  category: string;
+  creator_id: string;
+  booking_url: string;
+};
+
+export function parseWorkoutCard(text: string): ParsedWorkoutCard | null {
+  if (!text.startsWith("WORKOUT_CARD::")) return null;
+  const parts = text.split("::");
+  if (parts.length < 7) return null;
+  return {
+    workout_id: parts[1],
+    title: parts[2],
+    start_time: parts[3],
+    location: parts[4],
+    category: parts[5],
+    creator_id: parts[6],
+    booking_url: parts[7] ?? "",
+  };
+}
+
+export function isJumbomoji(text: string): boolean {
+  if (!text || text.length === 0) return false;
+  const trimmed = text.trim();
+  if (typeof Intl !== "undefined" && Intl.Segmenter) {
+    const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
+    const graphemes = Array.from(segmenter.segment(trimmed));
+    if (graphemes.length === 0 || graphemes.length > 3) return false;
+    const emojiRegex = /\p{Extended_Pictographic}/u;
+    return graphemes.every((g) => emojiRegex.test(g.segment));
+  }
+  const emojiRegex = /^(\p{Extended_Pictographic}|\s){1,12}$/u;
+  return emojiRegex.test(trimmed) && trimmed.length > 0;
+}
+
+// Central Park 6-miler workout card text
+const _cpWorkoutCard = encodeWorkoutCard(MOCK_WORKOUTS.find((w) => w.id === "w-central-park")!);
+// VITAL bouldering workout card text
+const _vitalWorkoutCard = encodeWorkoutCard(MOCK_WORKOUTS.find((w) => w.id === "w-bouldering")!);
+// Peloton ride workout card text
+const _pelotonWorkoutCard = encodeWorkoutCard(MOCK_WORKOUTS.find((w) => w.id === "w-peloton")!);
+
+// TODO: replace with get_messages_for_conversation RPC, paginated
+export const MOCK_MESSAGES: MockMessage[] = [
+  // --- Luke conversation (conv-luke) — 12 messages ---
+  { id: "m-l01", conversation_id: "conv-luke", sender_id: luke.id, text: "yo are you running central park sunday?", created_at: minutesAgo(2880), reactions: [], is_read: true },
+  { id: "m-l02", conversation_id: "conv-luke", sender_id: CURRENT_USER.id, text: "100%. what time?", created_at: minutesAgo(2875), reactions: [], is_read: true },
+  { id: "m-l03", conversation_id: "conv-luke", sender_id: luke.id, text: "michael said 7am at engineers gate", created_at: minutesAgo(2870), reactions: [], is_read: true },
+  { id: "m-l04", conversation_id: "conv-luke", sender_id: CURRENT_USER.id, text: "perfect. 6 miler?", created_at: minutesAgo(2865), reply_to_id: "m-l03", reactions: [], is_read: true },
+  { id: "m-l05", conversation_id: "conv-luke", sender_id: luke.id, text: "yeah full lower loop", created_at: minutesAgo(2860), reactions: [], is_read: true },
+  { id: "m-l06", conversation_id: "conv-luke", sender_id: luke.id, text: _cpWorkoutCard, created_at: minutesAgo(1440), reactions: [], is_read: true },
+  { id: "m-l07", conversation_id: "conv-luke", sender_id: CURRENT_USER.id, text: "lets go. adding it to my calendar", created_at: minutesAgo(1410), reactions: [{ emoji: "\ud83d\udc4d", user_id: luke.id }], is_read: true },
+  { id: "m-l08", conversation_id: "conv-luke", sender_id: luke.id, text: "bet", created_at: minutesAgo(1405), reactions: [], is_read: true },
+  { id: "m-l09", conversation_id: "conv-luke", sender_id: CURRENT_USER.id, text: "should we warm up at the gate or just start running?", created_at: minutesAgo(360), reactions: [], is_read: true },
+  { id: "m-l10", conversation_id: "conv-luke", sender_id: luke.id, text: "warm up for sure. dynamic stretches", created_at: minutesAgo(330), reactions: [], is_read: true },
+  { id: "m-l11", conversation_id: "conv-luke", sender_id: CURRENT_USER.id, text: "just confirmed with michael. we're locked in", created_at: minutesAgo(125), reactions: [], is_read: true },
+  { id: "m-l12", conversation_id: "conv-luke", sender_id: luke.id, text: "Sweeeet", created_at: minutesAgo(120), reactions: [{ emoji: "\u2764\ufe0f", user_id: CURRENT_USER.id }], is_read: true },
+
+  // --- Kyrah conversation (conv-kyrah) — 5 messages ---
+  { id: "m-k01", conversation_id: "conv-kyrah", sender_id: kyrah.id, text: "have you been climbing lately?", created_at: minutesAgo(300), reactions: [], is_read: true },
+  { id: "m-k02", conversation_id: "conv-kyrah", sender_id: CURRENT_USER.id, text: "not since last week. need to get back in there", created_at: minutesAgo(270), reactions: [], is_read: true },
+  { id: "m-k03", conversation_id: "conv-kyrah", sender_id: kyrah.id, text: "finn just posted a VITAL sesh, you should come", created_at: minutesAgo(240), reactions: [], is_read: false },
+  { id: "m-k04", conversation_id: "conv-kyrah", sender_id: CURRENT_USER.id, text: "say less", created_at: minutesAgo(210), reactions: [], is_read: true },
+  { id: "m-k05", conversation_id: "conv-kyrah", sender_id: CURRENT_USER.id, text: _vitalWorkoutCard, created_at: minutesAgo(180), reactions: [], is_read: true },
+
+  // --- Michael conversation (conv-michael) — 4 messages ---
+  { id: "m-m01", conversation_id: "conv-michael", sender_id: CURRENT_USER.id, text: "good run today", created_at: minutesAgo(180), reactions: [], is_read: true },
+  { id: "m-m02", conversation_id: "conv-michael", sender_id: michael.id, text: "crushed it. new PR pace", created_at: minutesAgo(150), reactions: [], is_read: true },
+  { id: "m-m03", conversation_id: "conv-michael", sender_id: CURRENT_USER.id, text: "lets gooo", created_at: minutesAgo(120), reactions: [{ emoji: "\ud83d\udd25", user_id: michael.id }], is_read: true },
+  { id: "m-m04", conversation_id: "conv-michael", sender_id: michael.id, text: "\ud83d\udd25", created_at: minutesAgo(60), reactions: [], is_read: false },
+
+  // --- Brandon conversation (conv-brandon) — 3 messages ---
+  { id: "m-b01", conversation_id: "conv-brandon", sender_id: CURRENT_USER.id, text: "you going to danny's deadlift session?", created_at: minutesAgo(1560), reactions: [], is_read: true },
+  { id: "m-b02", conversation_id: "conv-brandon", sender_id: brandon.id, text: "thinking about it", created_at: minutesAgo(1500), reactions: [], is_read: true },
+  { id: "m-b03", conversation_id: "conv-brandon", sender_id: brandon.id, text: "lmk if you're in", created_at: minutesAgo(1440), reactions: [], is_read: true },
+
+  // --- JB conversation (conv-jb) — 3 messages ---
+  { id: "m-j01", conversation_id: "conv-jb", sender_id: jb.id, text: "you need to try this peloton class", created_at: minutesAgo(2880), reactions: [], is_read: true },
+  { id: "m-j02", conversation_id: "conv-jb", sender_id: jb.id, text: _pelotonWorkoutCard, created_at: minutesAgo(2870), reactions: [], is_read: true },
+  { id: "m-j03", conversation_id: "conv-jb", sender_id: CURRENT_USER.id, text: "booking it now", created_at: minutesAgo(2820), reactions: [], is_read: true },
+
+  // --- Charles conversation (conv-charles) — 3 messages ---
+  { id: "m-c01", conversation_id: "conv-charles", sender_id: CURRENT_USER.id, text: "great run on sunday. prospect park was perfect", created_at: minutesAgo(4320), reactions: [], is_read: true },
+  { id: "m-c02", conversation_id: "conv-charles", sender_id: charles.id, text: "need to do that more often", created_at: minutesAgo(4260), reactions: [], is_read: true },
+  { id: "m-c03", conversation_id: "conv-charles", sender_id: charles.id, text: "\ud83d\ude4f\ud83d\ude4f", created_at: minutesAgo(4200), reactions: [], is_read: true },
+];
+
+// TODO: replace with get_conversations RPC when backend ready
+export const MOCK_CONVERSATIONS: MockConversation[] = [
+  { id: "conv-luke", is_group: false, participants: [CURRENT_USER, luke], last_message: null, unread_count: 0, is_pinned: true, is_muted: false, updated_at: minutesAgo(120) },
+  { id: "conv-michael", is_group: false, participants: [CURRENT_USER, michael], last_message: null, unread_count: 1, is_pinned: false, is_muted: false, updated_at: minutesAgo(60) },
+  { id: "conv-kyrah", is_group: false, participants: [CURRENT_USER, kyrah], last_message: null, unread_count: 1, is_pinned: false, is_muted: false, updated_at: minutesAgo(180) },
+  { id: "conv-brandon", is_group: false, participants: [CURRENT_USER, brandon], last_message: null, unread_count: 0, is_pinned: false, is_muted: false, updated_at: minutesAgo(1440) },
+  { id: "conv-jb", is_group: false, participants: [CURRENT_USER, jb], last_message: null, unread_count: 0, is_pinned: false, is_muted: false, updated_at: minutesAgo(2820) },
+  { id: "conv-charles", is_group: false, participants: [CURRENT_USER, charles], last_message: null, unread_count: 0, is_pinned: false, is_muted: false, updated_at: minutesAgo(4200) },
+];
+
+// Wire last_message from MOCK_MESSAGES (same pattern as group → upcoming_workouts)
+for (const conv of MOCK_CONVERSATIONS) {
+  const msgs = MOCK_MESSAGES.filter((m) => m.conversation_id === conv.id);
+  conv.last_message = msgs[msgs.length - 1] ?? null;
+}
+
+// ----------------------------------------------------------------
+// Conversation helpers
+// ----------------------------------------------------------------
+
+export function getConversationsForUser(): MockConversation[] {
+  return [...MOCK_CONVERSATIONS].sort((a, b) => {
+    if (a.is_pinned && !b.is_pinned) return -1;
+    if (!a.is_pinned && b.is_pinned) return 1;
+    return b.updated_at.localeCompare(a.updated_at);
+  });
+  // TODO: replace with get_conversations RPC when backend ready
+}
+
+export function getConversation(id: string): MockConversation | undefined {
+  return MOCK_CONVERSATIONS.find((c) => c.id === id);
+  // TODO: replace with get_conversation RPC
+}
+
+export function getMessagesForConversation(conversationId: string): MockMessage[] {
+  return MOCK_MESSAGES
+    .filter((m) => m.conversation_id === conversationId)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+  // TODO: replace with get_messages_for_conversation RPC, paginated
+}
+
+export function getOtherParticipant(conv: MockConversation): MockUser | undefined {
+  if (conv.is_group) return undefined;
+  return conv.participants.find((p) => p.id !== CURRENT_USER.id);
+}
+
+// findDMWith: helper for finding existing DMs. Currently unused on web (messaging deferred to iOS app).
+// Kept for potential future use if web messaging is reintroduced.
+export function findDMWith(otherUser: MockUser): MockConversation | undefined {
+  return MOCK_CONVERSATIONS.find(
+    (c) => !c.is_group && c.participants.some((p) => p.id === otherUser.id),
+  );
+  // TODO: replace with get_or_create_dm RPC when backend ready
+}
+
+export function getTotalUnreadCount(): number {
+  return MOCK_CONVERSATIONS.reduce((sum, c) => sum + c.unread_count, 0);
 }

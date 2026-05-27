@@ -12,21 +12,13 @@ export function Footer() {
           radr<span className="text-radr-cobalt not-italic">.</span>
         </span>
 
-        {/* Action pills */}
-        <div className="flex flex-wrap justify-center gap-3">
-          <Link
-            href="/explore"
-            className="inline-flex items-center h-10 px-5 rounded-full border border-radr-border text-sm font-semibold text-radr-text hover:bg-radr-surface-1 transition-colors no-underline"
-          >
-            Explore workouts
-          </Link>
-          <Link
-            href="/create"
-            className="inline-flex items-center h-10 px-5 rounded-full bg-radr-text text-radr-bg text-sm font-semibold hover:opacity-90 transition-opacity no-underline"
-          >
-            Create a workout
-          </Link>
-        </div>
+        {/* Action pill */}
+        <Link
+          href="/create"
+          className="inline-flex items-center h-10 px-6 rounded-full bg-radr-text text-radr-bg text-sm font-semibold hover:opacity-90 transition-opacity no-underline"
+        >
+          Create a workout
+        </Link>
 
         {/* Links */}
         <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-radr-text-dim">
