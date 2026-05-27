@@ -31,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="bg-radr-bg text-radr-text antialiased">{children}</body>
     </html>
   );
 }
