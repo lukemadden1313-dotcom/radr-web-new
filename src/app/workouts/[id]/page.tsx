@@ -370,14 +370,6 @@ export default async function WorkoutDetailPage({ params }: Props) {
                 <path d="M13.73 21a2 2 0 01-3.46 0" />
               </svg>
             </button>
-            {/* TODO: wire more menu */}
-            <button className="w-9 h-9 rounded-full flex items-center justify-center border border-radr-border hover:bg-radr-surface-2 transition-colors cursor-pointer" style={{ background: "transparent" }} aria-label="More">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-radr-text-muted">
-                <circle cx="12" cy="5" r="1.5" />
-                <circle cx="12" cy="12" r="1.5" />
-                <circle cx="12" cy="19" r="1.5" />
-              </svg>
-            </button>
           </div>
         </div>
 
@@ -387,7 +379,7 @@ export default async function WorkoutDetailPage({ params }: Props) {
         <div className="px-6 mt-6">
           <p className="text-sm text-radr-text-muted mb-2">Hosted by</p>
           <div className="flex items-center gap-3">
-            <Link href={`/profile/${workout.host.username}`} className="no-underline text-inherit flex items-center gap-3 flex-1 min-w-0">
+            <Link href={`/profile/${workout.host.username}`} className="no-underline text-inherit flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
               <UserAvatar user={workout.host} size={40} />
               <div className="min-w-0">
                 <p className="font-medium text-radr-text" style={{ fontSize: "1.125rem" }}>

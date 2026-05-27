@@ -448,6 +448,7 @@ export default function SchedulePage() {
                   key={w.id}
                   workout={w}
                   stripColor={stripColorForActivity(w.activity_type)}
+                  hideWeekday
                 />
               ))}
             </div>

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { MockWorkout } from "@/lib/mock-data";
 
-function formatShortDate(iso: string): string {
+function formatShortDate(iso: string, hideWeekday = false): string {
   const d = new Date(iso);
   const tz = "America/New_York";
-  const day = d.toLocaleDateString("en-US", { weekday: "short", timeZone: tz });
   const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz });
+  if (hideWeekday) return time;
+  const day = d.toLocaleDateString("en-US", { weekday: "short", timeZone: tz });
   return `${day} at ${time}`;
 }
 
@@ -13,10 +14,12 @@ export function WorkoutListRow({
   workout,
   reason,
   stripColor,
+  hideWeekday = false,
 }: {
   workout: MockWorkout;
   reason?: string;
   stripColor?: string;
+  hideWeekday?: boolean;
 }) {
   const goingCount = workout.participants.length;
 
@@ -38,7 +41,7 @@ export function WorkoutListRow({
             {workout.title}
           </p>
           <p className="text-sm text-radr-text-muted mt-0.5">
-            {formatShortDate(workout.start_time)} &middot; {workout.location.split(",")[0]}
+            {formatShortDate(workout.start_time, hideWeekday)} &middot; {workout.location.split(",")[0]}
           </p>
           {reason && (
             <p className="text-xs text-radr-text-dim mt-1.5">

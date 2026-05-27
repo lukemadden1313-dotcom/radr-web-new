@@ -589,7 +589,7 @@ export default function DashboardPage() {
           <SectionHeader title="On your Radr" />
           <Link
             href="/explore"
-            className="flex items-center gap-4 p-5 rounded-card border border-radr-border bg-radr-surface-1 no-underline text-inherit hover:border-radr-cobalt/40 transition-colors"
+            className="flex items-center gap-4 p-5 rounded-card border border-radr-border bg-radr-surface-1 no-underline text-inherit hover:border-radr-purple/40 transition-colors"
           >
             {/* Stacked preview avatars */}
             <div className="flex -space-x-3 shrink-0">

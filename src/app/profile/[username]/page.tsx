@@ -232,7 +232,7 @@ export default async function ProfilePage({ params }: Props) {
               </p>
               <div className="flex -space-x-2">
                 {mutualFriends.slice(0, 3).map((m) => (
-                  <UserAvatar key={m.id} user={m} size={20} className="border border-radr-bg" />
+                  <UserAvatar key={m.id} user={m} size={20} className="border-2 border-radr-bg" />
                 ))}
               </div>
             </div>
@@ -363,7 +363,11 @@ export default async function ProfilePage({ params }: Props) {
             </p>
             <div className="flex flex-col gap-3">
               {couldJoin.map((w) => (
-                <WorkoutListRow key={w.id} workout={w} />
+                <WorkoutListRow
+                  key={w.id}
+                  workout={w}
+                  stripColor="linear-gradient(to bottom, #9A5AF0, #6b3dbd)"
+                />
               ))}
             </div>
           </div>
@@ -378,7 +382,7 @@ export default async function ProfilePage({ params }: Props) {
             {hostedWorkouts.length > 0 ? (
               <div className="flex flex-col gap-3">
                 {hostedWorkouts.map((w) => (
-                  <WorkoutListRow key={w.id} workout={w} />
+                  <WorkoutListRow key={w.id} workout={w} stripColor="var(--radr-cobalt)" />
                 ))}
               </div>
             ) : (
@@ -402,7 +406,7 @@ export default async function ProfilePage({ params }: Props) {
               <>
                 <div className="flex flex-col gap-3">
                   {attendingWorkouts.slice(0, 5).map((w) => (
-                    <WorkoutListRow key={w.id} workout={w} />
+                    <WorkoutListRow key={w.id} workout={w} stripColor="var(--radr-cobalt)" />
                   ))}
                 </div>
                 {attendingWorkouts.length > 5 && (
