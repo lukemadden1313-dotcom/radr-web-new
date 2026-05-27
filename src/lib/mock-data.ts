@@ -10,6 +10,11 @@ export type MockUser = {
   avatar_url: string | null;
   initials: string;
   gradient_seed: string;
+  birthday_month?: string;
+  joined_at?: string;
+  bio?: string;
+  parties_attended?: number;
+  hosted_count?: number;
 };
 
 export type MockWorkout = {
@@ -91,6 +96,10 @@ export const CURRENT_USER: MockUser = {
   avatar_url: null,
   initials: "EG",
   gradient_seed: "E",
+  birthday_month: "August",
+  joined_at: "2024-07-15T00:00:00Z",
+  parties_attended: 19,
+  hosted_count: 4,
 };
 
 export const MOCK_FRIENDS: MockUser[] = [
@@ -101,6 +110,10 @@ export const MOCK_FRIENDS: MockUser[] = [
     avatar_url: null,
     initials: "LM",
     gradient_seed: "L",
+    birthday_month: "March",
+    joined_at: "2024-06-01T00:00:00Z",
+    parties_attended: 31,
+    hosted_count: 8,
   },
   {
     id: "u-finn",
@@ -117,6 +130,10 @@ export const MOCK_FRIENDS: MockUser[] = [
     avatar_url: null,
     initials: "MR",
     gradient_seed: "M",
+    birthday_month: "November",
+    joined_at: "2024-08-20T00:00:00Z",
+    parties_attended: 22,
+    hosted_count: 6,
   },
   {
     id: "u-kyrah",
@@ -125,6 +142,10 @@ export const MOCK_FRIENDS: MockUser[] = [
     avatar_url: null,
     initials: "KS",
     gradient_seed: "K",
+    birthday_month: "January",
+    joined_at: "2024-09-10T00:00:00Z",
+    parties_attended: 14,
+    hosted_count: 3,
   },
   {
     id: "u-danny",
@@ -492,4 +513,45 @@ export const ACTIVITY_COVER_PHOTOS: Record<string, string> = {
 
 export function coverPhotoForActivity(activity: string): string {
   return ACTIVITY_COVER_PHOTOS[activity] ?? ACTIVITY_COVER_PHOTOS["Running"];
+}
+
+// ----------------------------------------------------------------
+// Profile helpers
+// ----------------------------------------------------------------
+
+export function getUserByUsername(username: string): MockUser | undefined {
+  if (username === CURRENT_USER.username) return CURRENT_USER;
+  return MOCK_FRIENDS.find((u) => u.username === username);
+}
+
+// TODO: replace with get_mutual_friends RPC when backend ready
+export function getMutualFriends(otherUser: MockUser): MockUser[] {
+  return MOCK_FRIENDS.filter(
+    (u) => u.id !== otherUser.id && u.id !== CURRENT_USER.id,
+  ).slice(0, 6);
+}
+
+// TODO: replace with get_shared_workouts RPC when backend ready
+export function getSharedWorkouts(otherUser: MockUser): MockWorkout[] {
+  return MOCK_WORKOUTS.filter(
+    (w) =>
+      w.participants.some((p) => p.id === CURRENT_USER.id) &&
+      w.participants.some((p) => p.id === otherUser.id),
+  );
+}
+
+// TODO: replace with RPC
+export function getWorkoutsHostedByUser(user: MockUser): MockWorkout[] {
+  return MOCK_WORKOUTS.filter((w) => w.host.id === user.id);
+}
+
+// TODO: replace with RPC
+export function getWorkoutsUserCouldJoin(otherUser: MockUser): MockWorkout[] {
+  const now = new Date();
+  return MOCK_WORKOUTS.filter(
+    (w) =>
+      new Date(w.start_time) >= now &&
+      w.participants.some((p) => p.id === otherUser.id) &&
+      !w.participants.some((p) => p.id === CURRENT_USER.id),
+  );
 }
