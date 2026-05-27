@@ -3,6 +3,7 @@ import { SiteShell } from "@/components/layout/site-shell";
 import { AvatarImg } from "@/components/avatar-img";
 import { ActivityIcon } from "@/components/activity-icon";
 import BrandDot from "@/components/brand-dot";
+import { WorkoutListRow } from "@/components/workout-list-row";
 import {
   CURRENT_USER,
   MOCK_WORKOUTS,
@@ -350,47 +351,6 @@ function CreateWorkoutCard() {
 }
 
 // ----------------------------------------------------------------
-// Recommendation Card (vertical stack)
-// ----------------------------------------------------------------
-
-function RecommendationCard({ rec }: { rec: MockRecommendation }) {
-  const w = rec.workout;
-
-  return (
-    <Link
-      href={`/w-v2/${w.id}`}
-      className="flex items-stretch rounded-card border border-radr-border overflow-hidden no-underline text-inherit hover:border-radr-cobalt/40 transition-colors group"
-    >
-      {/* Gradient accent strip */}
-      <div
-        className="w-2 shrink-0"
-        style={{ background: w.cover_gradient }}
-      />
-
-      {/* Content */}
-      <div className="flex-1 p-4 flex items-center gap-4 bg-radr-surface-1">
-        <div className="flex-1 min-w-0">
-          <p className="text-base font-bold text-radr-text truncate">
-            {w.title}
-          </p>
-          <p className="text-sm text-radr-text-muted mt-0.5">
-            {formatShortDate(w.start_time)} &middot; {w.location.split(",")[0]}
-          </p>
-          <p className="text-xs text-radr-text-dim mt-1.5">
-            {rec.reason}
-          </p>
-        </div>
-
-        {/* Join pill */}
-        <span className="shrink-0 inline-flex items-center h-8 px-4 rounded-pill bg-radr-surface-2 border border-radr-border text-sm font-semibold text-radr-text radr-pill-interactive hover:bg-radr-cobalt hover:text-white hover:border-radr-cobalt transition-colors">
-          + Join
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-// ----------------------------------------------------------------
 // Group Card (photo cover)
 // ----------------------------------------------------------------
 
@@ -589,7 +549,7 @@ export default function DashboardPage() {
           </p>
           <div className="flex flex-col gap-3">
             {MOCK_RECOMMENDATIONS.slice(0, 4).map((rec) => (
-              <RecommendationCard key={rec.workout.id} rec={rec} />
+              <WorkoutListRow key={rec.workout.id} workout={rec.workout} reason={rec.reason} />
             ))}
           </div>
           {MOCK_RECOMMENDATIONS.length > 4 && (
