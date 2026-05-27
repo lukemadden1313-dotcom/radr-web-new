@@ -761,3 +761,109 @@ export function getWorkoutsUserCouldJoin(otherUser: MockUser): MockWorkout[] {
       !w.participants.some((p) => p.id === CURRENT_USER.id),
   );
 }
+
+// ----------------------------------------------------------------
+// Canonical activity list (from iOS Models.swift)
+// ----------------------------------------------------------------
+
+export type Activity = {
+  key: string;
+  displayName: string;
+  icon: string;
+};
+
+export const ACTIVITIES: Activity[] = [
+  { key: "americanFootball", displayName: "American Football", icon: "\ud83c\udfc8" },
+  { key: "archery", displayName: "Archery", icon: "\ud83c\udfaf" },
+  { key: "australianFootball", displayName: "Australian Football", icon: "\ud83c\udfc9" },
+  { key: "badminton", displayName: "Badminton", icon: "\ud83c\udff8" },
+  { key: "barre", displayName: "Barre", icon: "\ud83e\ude70" },
+  { key: "baseball", displayName: "Baseball", icon: "\u26be" },
+  { key: "basketball", displayName: "Basketball", icon: "\ud83c\udfc0" },
+  { key: "bowling", displayName: "Bowling", icon: "\ud83c\udfb3" },
+  { key: "boxing", displayName: "Boxing", icon: "\ud83e\udd4a" },
+  { key: "climbing", displayName: "Climbing", icon: "\ud83e\uddd7" },
+  { key: "cooldown", displayName: "Cooldown", icon: "\ud83e\uddca" },
+  { key: "coreTraining", displayName: "Core Training", icon: "\ud83d\udcaa" },
+  { key: "cricket", displayName: "Cricket", icon: "\ud83c\udfcf" },
+  { key: "crossCountrySkiing", displayName: "Cross Country Skiing", icon: "\u26f7\ufe0f" },
+  { key: "crossTraining", displayName: "Cross Training", icon: "\ud83c\udfcb\ufe0f" },
+  { key: "curling", displayName: "Curling", icon: "\ud83e\udd4c" },
+  { key: "dance", displayName: "Dance", icon: "\ud83d\udc83" },
+  { key: "discSports", displayName: "Disc Sports", icon: "\ud83e\udd4f" },
+  { key: "downhillSkiing", displayName: "Downhill Skiing", icon: "\u26f7\ufe0f" },
+  { key: "elliptical", displayName: "Elliptical", icon: "\ud83c\udfc3" },
+  { key: "equestrianSports", displayName: "Equestrian Sports", icon: "\ud83d\udc34" },
+  { key: "fencing", displayName: "Fencing", icon: "\ud83e\udd3a" },
+  { key: "fishing", displayName: "Fishing", icon: "\ud83c\udfa3" },
+  { key: "fitnessGaming", displayName: "Fitness Gaming", icon: "\ud83c\udfae" },
+  { key: "flexibility", displayName: "Flexibility", icon: "\ud83e\udd38" },
+  { key: "functionalStrength", displayName: "Functional Strength Training", icon: "\ud83c\udfcb\ufe0f" },
+  { key: "golf", displayName: "Golf", icon: "\u26f3" },
+  { key: "gymnastics", displayName: "Gymnastics", icon: "\ud83e\udd38" },
+  { key: "handCycling", displayName: "Hand Cycling", icon: "\ud83d\udeb4" },
+  { key: "handball", displayName: "Handball", icon: "\ud83e\udd3e" },
+  { key: "hiit", displayName: "High Intensity Interval Training", icon: "\ud83d\udd25" },
+  { key: "hike", displayName: "Hiking", icon: "\ud83e\udd7e" },
+  { key: "hunting", displayName: "Hunting", icon: "\ud83c\udff9" },
+  { key: "hyrox", displayName: "Hyrox", icon: "\ud83d\udcaa" },
+  { key: "indoorCycle", displayName: "Indoor Cycle", icon: "\ud83d\udeb4" },
+  { key: "indoorHockey", displayName: "Indoor Hockey", icon: "\ud83c\udfd2" },
+  { key: "indoorRowing", displayName: "Indoor Rowing", icon: "\ud83d\udea3" },
+  { key: "indoorRun", displayName: "Indoor Run", icon: "\ud83c\udfc3" },
+  { key: "indoorSkating", displayName: "Indoor Skating", icon: "\u26f8\ufe0f" },
+  { key: "indoorSoccer", displayName: "Indoor Soccer", icon: "\u26bd" },
+  { key: "indoorWalk", displayName: "Indoor Walk", icon: "\ud83d\udeb6" },
+  { key: "jumpRope", displayName: "Jump Rope", icon: "\ud83e\udea2" },
+  { key: "kickboxing", displayName: "Kickboxing", icon: "\ud83e\udd4b" },
+  { key: "lacrosse", displayName: "Lacrosse", icon: "\ud83e\udd4d" },
+  { key: "martialArts", displayName: "Martial Arts", icon: "\ud83e\udd4b" },
+  { key: "mindAndBody", displayName: "Mind & Body", icon: "\ud83e\uddd8" },
+  { key: "mixedCardio", displayName: "Mixed Cardio", icon: "\u2764\ufe0f" },
+  { key: "openWaterSwim", displayName: "Open Water Swim", icon: "\ud83c\udf0a" },
+  { key: "outdoorCycle", displayName: "Outdoor Cycle", icon: "\ud83d\udeb4" },
+  { key: "outdoorHockey", displayName: "Outdoor Hockey", icon: "\ud83c\udfd2" },
+  { key: "outdoorRowing", displayName: "Outdoor Rowing", icon: "\ud83d\udea3" },
+  { key: "outdoorRun", displayName: "Outdoor Run", icon: "\ud83c\udfc3" },
+  { key: "outdoorSkating", displayName: "Outdoor Skating", icon: "\u26f8\ufe0f" },
+  { key: "outdoorSoccer", displayName: "Outdoor Soccer", icon: "\u26bd" },
+  { key: "outdoorWalk", displayName: "Outdoor Walk", icon: "\ud83d\udeb6" },
+  { key: "padel", displayName: "P\u00e1del", icon: "\ud83c\udfbe" },
+  { key: "paddling", displayName: "Paddling", icon: "\ud83d\udef6" },
+  { key: "pickleball", displayName: "Pickleball", icon: "\ud83c\udfd3" },
+  { key: "pilates", displayName: "Pilates", icon: "\ud83e\udd38" },
+  { key: "play", displayName: "Play", icon: "\ud83e\udd3e" },
+  { key: "poolSwim", displayName: "Pool Swim", icon: "\ud83c\udfca" },
+  { key: "racquetball", displayName: "Racquetball", icon: "\ud83c\udfbe" },
+  { key: "rolling", displayName: "Rolling", icon: "\ud83d\udef9" },
+  { key: "rugby", displayName: "Rugby", icon: "\ud83c\udfc9" },
+  { key: "sailing", displayName: "Sailing", icon: "\u26f5" },
+  { key: "snowSports", displayName: "Snow Sports", icon: "\ud83c\udfbf" },
+  { key: "snowboarding", displayName: "Snowboarding", icon: "\ud83c\udfc2" },
+  { key: "socialDance", displayName: "Social Dance", icon: "\ud83d\udc83" },
+  { key: "softball", displayName: "Softball", icon: "\ud83e\udd4e" },
+  { key: "squash", displayName: "Squash", icon: "\ud83c\udfbe" },
+  { key: "stairs", displayName: "Stairs", icon: "\ud83e\ude9c" },
+  { key: "stairStepper", displayName: "Stair Stepper", icon: "\ud83e\ude9c" },
+  { key: "stepTraining", displayName: "Step Training", icon: "\ud83e\ude9c" },
+  { key: "surfing", displayName: "Surfing", icon: "\ud83c\udfc4" },
+  { key: "tableTennis", displayName: "Table Tennis", icon: "\ud83c\udfd3" },
+  { key: "taiChi", displayName: "Tai Chi", icon: "\ud83e\uddd8" },
+  { key: "tennis", displayName: "Tennis", icon: "\ud83c\udfbe" },
+  { key: "trackAndField", displayName: "Track & Field", icon: "\ud83c\udfc3" },
+  { key: "traditionalStrength", displayName: "Traditional Strength Training", icon: "\ud83c\udfcb\ufe0f" },
+  { key: "volleyball", displayName: "Volleyball", icon: "\ud83c\udfd0" },
+  { key: "wrestling", displayName: "Wrestling", icon: "\ud83e\udd3c" },
+  { key: "yoga", displayName: "Yoga", icon: "\ud83e\uddd8" },
+];
+
+export function getSuggestedActivities(): Activity[] {
+  const suggested = ["outdoorRun", "outdoorSoccer", "yoga"];
+  return suggested
+    .map((key) => ACTIVITIES.find((a) => a.key === key))
+    .filter((a): a is Activity => a !== undefined);
+}
+
+export function getActivityByKey(key: string): Activity | undefined {
+  return ACTIVITIES.find((a) => a.key === key);
+}
