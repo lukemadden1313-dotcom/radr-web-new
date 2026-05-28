@@ -707,6 +707,114 @@ export const DISCOVERABLE_FRIENDS = {
 };
 
 // ----------------------------------------------------------------
+// Friend states & friend-finding data
+// Aligned to iOS FriendRequest.RequestStatus + FriendshipDTO model
+// See docs/ios-canonical/friends.md
+// ----------------------------------------------------------------
+
+export type FriendStatus = "none" | "request_sent" | "request_received" | "friends";
+
+export type MockFriendRequest = {
+  id: string;
+  user: MockUser;
+  mutual_friends_count: number;
+  created_at: string;
+};
+
+export type MockSuggestedUser = {
+  user: MockUser;
+  mutual_friends_count: number;
+  mutual_friend_avatars: MockUser[];
+};
+
+// Non-friend users for suggested/search results
+const SUGGESTED_USERS_RAW: MockUser[] = [
+  { id: "u-nina", full_name: "Nina Patel", username: "ninapatel", avatar_url: null, initials: "NP", gradient_seed: "N" },
+  { id: "u-marcus", full_name: "Marcus Chen", username: "marcuschen", avatar_url: null, initials: "MC", gradient_seed: "M2" },
+  { id: "u-sofia", full_name: "Sofia Reyes", username: "sofiareyes", avatar_url: null, initials: "SR", gradient_seed: "S" },
+  { id: "u-omar", full_name: "Omar Hassan", username: "omarhassan", avatar_url: null, initials: "OH", gradient_seed: "O" },
+  { id: "u-alex", full_name: "Alex Kim", username: "alexkim", avatar_url: null, initials: "AK", gradient_seed: "A" },
+  { id: "u-priya", full_name: "Priya Sharma", username: "priyasharma", avatar_url: null, initials: "PS", gradient_seed: "P" },
+  { id: "u-jordan", full_name: "Jordan Blake", username: "jordanblake", avatar_url: null, initials: "JBL", gradient_seed: "J2" },
+  { id: "u-maya", full_name: "Maya Torres", username: "mayatorres", avatar_url: null, initials: "MT", gradient_seed: "M3" },
+  { id: "u-ethan", full_name: "Ethan Brooks", username: "ethanbrooks", avatar_url: null, initials: "EB", gradient_seed: "E2" },
+  { id: "u-chloe", full_name: "Chloe Nguyen", username: "chloeng", avatar_url: null, initials: "CN", gradient_seed: "C2" },
+  { id: "u-liam", full_name: "Liam O'Brien", username: "liamobrien", avatar_url: null, initials: "LO", gradient_seed: "L2" },
+  { id: "u-ava", full_name: "Ava Martinez", username: "avamartinez", avatar_url: null, initials: "AM", gradient_seed: "A2" },
+  { id: "u-noah", full_name: "Noah Davis", username: "noahdavis", avatar_url: null, initials: "ND", gradient_seed: "N2" },
+  { id: "u-zara", full_name: "Zara Williams", username: "zarawilliams", avatar_url: null, initials: "ZW", gradient_seed: "Z" },
+];
+
+// TODO: replace with get_incoming_friend_requests RPC when backend ready
+export const MOCK_INCOMING_REQUESTS: MockFriendRequest[] = [
+  {
+    id: "fr-1",
+    user: SUGGESTED_USERS_RAW[0], // Nina Patel
+    mutual_friends_count: 4,
+    created_at: "2026-05-26T14:30:00Z",
+  },
+  {
+    id: "fr-2",
+    user: SUGGESTED_USERS_RAW[1], // Marcus Chen
+    mutual_friends_count: 2,
+    created_at: "2026-05-25T09:15:00Z",
+  },
+];
+
+// TODO: replace with get_outgoing_friend_requests RPC when backend ready
+export const MOCK_OUTGOING_REQUESTS: MockFriendRequest[] = [
+  {
+    id: "fr-3",
+    user: SUGGESTED_USERS_RAW[2], // Sofia Reyes
+    mutual_friends_count: 1,
+    created_at: "2026-05-27T08:00:00Z",
+  },
+];
+
+// TODO: replace with get_suggested_users RPC when backend ready
+export const MOCK_SUGGESTED_USERS: MockSuggestedUser[] = SUGGESTED_USERS_RAW.slice(3).map(
+  (user, i) => ({
+    user,
+    mutual_friends_count: [5, 3, 7, 2, 8, 1, 4, 6, 3, 2, 5][i] ?? 1,
+    mutual_friend_avatars: MOCK_FRIENDS.slice(0, Math.min(3, [2, 1, 3, 1, 3, 1, 2, 2, 1, 1, 2][i] ?? 1)),
+  }),
+);
+
+// TODO: replace with search_users RPC when backend ready
+export function searchUsers(query: string): MockUser[] {
+  if (!query.trim()) return [];
+  const q = query.toLowerCase();
+  return getAllKnownUsers().filter(
+    (u) =>
+      u.full_name.toLowerCase().includes(q) ||
+      u.username.toLowerCase().includes(q),
+  ).slice(0, 20);
+}
+
+// TODO: replace with get_incoming_friend_requests RPC when backend ready
+export function getIncomingFriendRequests(): MockFriendRequest[] {
+  return MOCK_INCOMING_REQUESTS;
+}
+
+// TODO: replace with get_outgoing_friend_requests RPC when backend ready
+export function getOutgoingFriendRequests(): MockFriendRequest[] {
+  return MOCK_OUTGOING_REQUESTS;
+}
+
+// TODO: replace with get_suggested_users RPC when backend ready
+export function getSuggestedUsers(): MockSuggestedUser[] {
+  return MOCK_SUGGESTED_USERS;
+}
+
+// TODO: replace with backend friendship lookup
+export function getFriendStatus(userId: string): FriendStatus {
+  if (MOCK_FRIENDS.some((f) => f.id === userId)) return "friends";
+  if (MOCK_INCOMING_REQUESTS.some((r) => r.user.id === userId)) return "request_received";
+  if (MOCK_OUTGOING_REQUESTS.some((r) => r.user.id === userId)) return "request_sent";
+  return "none";
+}
+
+// ----------------------------------------------------------------
 // Activity cover photos (Unsplash)
 // ----------------------------------------------------------------
 
@@ -731,9 +839,40 @@ export function coverPhotoForActivity(activity: string): string {
 // Profile helpers
 // ----------------------------------------------------------------
 
+// Aggregates every MockUser across all mock data sources, deduped by id.
+// This is the lookup surface for profile pages — anyone visible anywhere should be visitable.
+// TODO: replace with get_profile_by_username RPC when backend ready
+export function getAllKnownUsers(): MockUser[] {
+  const seen = new Map<string, MockUser>();
+  const add = (u: MockUser | undefined | null) => {
+    if (u && u.id && !seen.has(u.id)) seen.set(u.id, u);
+  };
+
+  add(CURRENT_USER);
+  MOCK_FRIENDS.forEach(add);
+  SUGGESTED_USERS_RAW.forEach(add);
+  MOCK_INCOMING_REQUESTS.forEach((r) => add(r.user));
+  MOCK_OUTGOING_REQUESTS.forEach((r) => add(r.user));
+  MOCK_WORKOUTS.forEach((w) => {
+    add(w.host);
+    w.cohosts.forEach(add);
+    w.participants.forEach(add);
+  });
+  MOCK_GROUPS.forEach((g) => {
+    g.members.forEach(add);
+  });
+  MOCK_CONVERSATIONS.forEach((c) => {
+    c.participants.forEach(add);
+  });
+
+  return Array.from(seen.values());
+}
+
 export function getUserByUsername(username: string): MockUser | undefined {
-  if (username === CURRENT_USER.username) return CURRENT_USER;
-  return MOCK_FRIENDS.find((u) => u.username === username);
+  const normalized = username.replace(/^@/, "").toLowerCase();
+  return getAllKnownUsers().find(
+    (u) => u.username.replace(/^@/, "").toLowerCase() === normalized,
+  );
 }
 
 // TODO: replace with get_mutual_friends RPC when backend ready

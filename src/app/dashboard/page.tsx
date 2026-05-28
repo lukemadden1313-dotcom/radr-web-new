@@ -554,7 +554,7 @@ export default function DashboardPage() {
           </div>
           {MOCK_RECOMMENDATIONS.length > 4 && (
             <Link
-              href="/explore"
+              href="/friends"
               className="block text-center text-sm font-medium text-radr-text-dim hover:text-radr-text mt-4 transition-colors no-underline"
             >
               See more
@@ -588,7 +588,7 @@ export default function DashboardPage() {
         <section className="pb-12 radr-section-enter" style={{ animationDelay: "0.25s" }}>
           <SectionHeader title="On your Radr" />
           <Link
-            href="/explore"
+            href="/friends"
             className="flex items-center gap-4 p-5 rounded-card border border-radr-border bg-radr-surface-1 no-underline text-inherit hover:border-radr-purple/40 transition-colors"
           >
             {/* Stacked preview avatars */}

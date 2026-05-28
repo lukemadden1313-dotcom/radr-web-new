@@ -96,6 +96,7 @@ Each migration: Luke creates Supabase table seeded from the canonical doc, build
 | `/groups` | All your groups | Built | `get_user_groups` |
 | `/settings` | Account settings | Built | `get_user_preferences`, `update_user_preference(key, value)` |
 | `/create` | 3-step workout creation | Built (visual submit only) | `create_workout(input)` — see spec below |
+| `/friends` | Friend search + requests + discover + your friends | Built | `search_users`, `get_incoming_friend_requests`, `get_outgoing_friend_requests`, `get_suggested_users`, `accept_friend_request`, `decline_friend_request`, `send_friend_request`, `unfriend` |
 | `/messages/[id]` | Deep-link fallback (open-in-app landing) | Built | `getConversation(id)` — only needs participant name + avatar for display |
 | `/w-v2/[id]` | Existing workout share page | Pre-existing | (unchanged) |
 | `/g-v2/[id]` | Existing group share page | Pre-existing | (will benefit from RPC expansion in backlog #2) |
@@ -123,6 +124,11 @@ Every interactive button/action that needs a backend handler. Currently visual-o
 | Day selection on schedule | `/schedule` | hardcoded to today | client state + day filter |
 | Avatar dropdown → Log out | top nav | nothing | Auth signOut |
 | "+ Workout" with friend button | `/profile/[username]` (other view) | links to /create | should preselect friend invite if possible |
+| Search users | `/friends` | filters mock data | `search_users(query)` RPC |
+| Accept friend request | `/friends` | nothing | `accept_friend_request(request_id)` RPC |
+| Decline friend request | `/friends` | nothing | `decline_friend_request(request_id)` RPC |
+| Send friend request (Add) | `/friends` | nothing | `send_friend_request(user_id)` RPC |
+| Unfriend | `/friends`, `/profile` | nothing | `unfriend(user_id)` RPC |
 
 ---
 
@@ -184,3 +190,5 @@ All docs in `docs/ios-canonical/` are extracted from iOS code and represent the 
 - Does iOS already have a `create_workout` RPC web should reuse?
 - Web invented helper names like `getMutualFriends`, `getSharedWorkouts`, `getWorkoutsUserCouldJoin` — do iOS-side equivalent RPCs exist with different names?
 - Universal link URL scheme for opening conversations in the iOS app — web's `/messages/[id]` fallback page needs the correct `radr://` or universal link format.
+- Friend states enum on web matches iOS — does Supabase model match (see `docs/ios-canonical/friends.md`)?
+- "Suggested users" logic — what's the iOS algorithm (mutual connections? geo? activity overlap)? Web mock uses `mutual_friends_count` but doesn't compute the ranking.

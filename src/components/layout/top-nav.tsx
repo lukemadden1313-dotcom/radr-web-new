@@ -55,6 +55,25 @@ function ScheduleIcon({ active }: { active: boolean }) {
   );
 }
 
+function SearchIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={active ? "text-radr-cobalt" : "text-radr-text-muted"}
+    >
+      <circle cx="11" cy="11" r="8" />
+      <path d="M21 21l-4.35-4.35" />
+    </svg>
+  );
+}
+
 function BellIcon({ active, hasUnread }: { active: boolean; hasUnread: boolean }) {
   return (
     <span className="relative">
@@ -86,6 +105,7 @@ export function TopNav() {
 
   const isHome = pathname === "/dashboard" || pathname === "/home";
   const isSchedule = pathname === "/schedule";
+  const isFriends = pathname === "/friends";
   const isNotifications = pathname === "/notifications";
   const isCreate = pathname === "/create";
 
@@ -105,6 +125,12 @@ export function TopNav() {
         <Link href="/schedule" aria-label="Schedule" className="relative flex flex-col items-center">
           <ScheduleIcon active={isSchedule} />
           {isSchedule && (
+            <span className="absolute -bottom-2 w-5 h-0.5 rounded-full bg-radr-cobalt" />
+          )}
+        </Link>
+        <Link href="/friends" aria-label="Find friends" className="relative flex flex-col items-center">
+          <SearchIcon active={isFriends} />
+          {isFriends && (
             <span className="absolute -bottom-2 w-5 h-0.5 rounded-full bg-radr-cobalt" />
           )}
         </Link>
