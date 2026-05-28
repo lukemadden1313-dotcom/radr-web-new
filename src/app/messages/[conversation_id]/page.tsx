@@ -89,9 +89,10 @@ export default async function ConversationLandingPage({ params }: Props) {
           {/* Action buttons */}
           <div className="flex flex-col gap-3 max-w-xs mx-auto w-full mt-10">
             <OpenInRadrButton conversationId={conversation_id} />
-            {/* TODO: replace with App Store URL when published */}
             <a
-              href="#"
+              href="https://apps.apple.com/us/app/radr-calendar/id6758311100"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-sm no-underline"
               style={{ color: "var(--radr-text-muted)" }}
             >

@@ -142,6 +142,28 @@ export function WorkoutDetailInteractive({
   const [participants, setParticipants] = useState(initialParticipants);
   const [feed, setFeed] = useState(initialFeed);
   const [commentText, setCommentText] = useState("");
+  const [shareCopied, setShareCopied] = useState(false);
+  const [calAdded, setCalAdded] = useState(false);
+  const [bellOn, setBellOn] = useState(false);
+
+  // -- Action button handlers --
+  // TODO: wire add-to-calendar (client-side .ics download or Google Calendar link)
+  function handleCalendar() {
+    setCalAdded(true);
+    setTimeout(() => setCalAdded(false), 2000);
+  }
+  // TODO: wire share — Web Share API or copy link
+  function handleShare() {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href).catch(() => {});
+    }
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
+  }
+  // TODO: wire toggle_workout_notifications(workout_id)
+  function handleBell() {
+    setBellOn((prev) => !prev);
+  }
 
   // -- RSVP change handler --
   // TODO: wire upsert_rsvp(workout_id, status) — optimistic only, resets on reload
@@ -266,27 +288,27 @@ export function WorkoutDetailInteractive({
 
         {/* Action row */}
         <div className="flex items-center gap-4 mt-4">
-          <button className="w-9 h-9 rounded-full flex items-center justify-center border border-radr-border hover:bg-radr-surface-2 transition-colors cursor-pointer" style={{ background: "transparent" }} aria-label="Add to calendar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-muted">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-              <line x1="12" y1="14" x2="12" y2="18" />
-              <line x1="10" y1="16" x2="14" y2="16" />
-            </svg>
+          <button onClick={handleCalendar} className="w-9 h-9 rounded-full flex items-center justify-center border transition-colors cursor-pointer" style={{ background: calAdded ? "rgba(42,212,114,0.15)" : "transparent", borderColor: calAdded ? "#2AD472" : "var(--radr-border)" }} aria-label={calAdded ? "Added to calendar" : "Add to calendar"}>
+            {calAdded ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2AD472" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-muted">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="12" y1="14" x2="12" y2="18" /><line x1="10" y1="16" x2="14" y2="16" />
+              </svg>
+            )}
           </button>
-          <button className="w-9 h-9 rounded-full flex items-center justify-center border border-radr-border hover:bg-radr-surface-2 transition-colors cursor-pointer" style={{ background: "transparent" }} aria-label="Share">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-muted">
-              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-              <polyline points="16 6 12 2 8 6" />
-              <line x1="12" y1="2" x2="12" y2="15" />
-            </svg>
+          <button onClick={handleShare} className="w-9 h-9 rounded-full flex items-center justify-center border transition-colors cursor-pointer" style={{ background: shareCopied ? "rgba(42,212,114,0.15)" : "transparent", borderColor: shareCopied ? "#2AD472" : "var(--radr-border)" }} aria-label={shareCopied ? "Link copied" : "Share"}>
+            {shareCopied ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2AD472" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-muted">
+                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" />
+              </svg>
+            )}
           </button>
-          <button className="w-9 h-9 rounded-full flex items-center justify-center border border-radr-border hover:bg-radr-surface-2 transition-colors cursor-pointer" style={{ background: "transparent" }} aria-label="Notifications">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-muted">
-              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 01-3.46 0" />
+          <button onClick={handleBell} className="w-9 h-9 rounded-full flex items-center justify-center border transition-colors cursor-pointer" style={{ background: bellOn ? "rgba(12,93,233,0.15)" : "transparent", borderColor: bellOn ? "var(--radr-cobalt)" : "var(--radr-border)" }} aria-label={bellOn ? "Notifications on" : "Notifications off"}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill={bellOn ? "var(--radr-cobalt)" : "none"} stroke={bellOn ? "var(--radr-cobalt)" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={bellOn ? "" : "text-radr-text-muted"}>
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" />
             </svg>
           </button>
         </div>

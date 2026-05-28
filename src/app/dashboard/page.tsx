@@ -4,6 +4,7 @@ import { AvatarImg } from "@/components/avatar-img";
 import { ActivityIcon } from "@/components/activity-icon";
 import BrandDot from "@/components/brand-dot";
 import { WorkoutListRow } from "@/components/workout-list-row";
+import { CreateCrewButton } from "@/components/create-crew-prompt";
 import {
   CURRENT_USER,
   MOCK_WORKOUTS,
@@ -400,14 +401,17 @@ function GroupCard({ group }: { group: MockGroup }) {
 
 function CreateGroupCard() {
   return (
-    <button className="shrink-0 w-[180px] min-h-[170px] rounded-card border border-dashed border-radr-border bg-radr-surface-1 flex flex-col items-center justify-center gap-2 hover:bg-radr-surface-2 transition-colors cursor-pointer">
+    <CreateCrewButton
+      className="shrink-0 w-[180px] min-h-[170px] rounded-card border border-dashed border-radr-border bg-radr-surface-1 flex flex-col items-center justify-center gap-2 hover:bg-radr-surface-2 transition-colors cursor-pointer"
+      style={{ background: "var(--radr-surface-1)" }}
+    >
       <span className="w-10 h-10 rounded-full bg-radr-surface-2 flex items-center justify-center text-radr-text-muted text-lg font-light">
         +
       </span>
       <span className="text-xs font-semibold text-radr-text-muted">
         Create group
       </span>
-    </button>
+    </CreateCrewButton>
   );
 }
 

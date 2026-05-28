@@ -20,6 +20,7 @@ import {
   type SerializableUser,
   type FeedItem,
 } from "./group-activity-interactive";
+import { GroupActionButtons, JoinLeavePill } from "./group-actions";
 
 // ----------------------------------------------------------------
 // Helpers
@@ -301,30 +302,8 @@ export default async function GroupDetailPage({ params }: Props) {
               </span>
             </div>
 
-            {/* Join/Joined pill — bottom right */}
-            <div
-              style={{
-                position: "absolute",
-                bottom: 16,
-                right: 16,
-                padding: "10px 22px",
-                borderRadius: 9999,
-                background: isMember ? "rgba(42, 212, 114, 0.95)" : "rgba(255,255,255,0.95)",
-                border: isMember ? "1px solid rgba(255,255,255,0.2)" : "none",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                cursor: "pointer",
-              }}
-            >
-              {/* TODO: wire join/leave action */}
-              <span style={{
-                color: isMember ? "#fff" : "#000",
-                fontSize: 16,
-                fontWeight: 700,
-                lineHeight: 1,
-              }}>
-                {isMember ? "\ud83d\udc4b Joined" : "+ Join Crew"}
-              </span>
-            </div>
+            {/* Join/Joined pill — bottom right (interactive) */}
+            <JoinLeavePill isMember={isMember} groupId={group.id} />
           </div>
         </div>
 
@@ -348,43 +327,8 @@ export default async function GroupDetailPage({ params }: Props) {
             <span className="font-semibold" style={{ color: "var(--radr-text)" }}>{upcomingCount}</span> upcoming
           </p>
 
-          {/* Action row */}
-          <div className="flex items-center gap-4 mt-4">
-            {/* TODO: wire calendar sync */}
-            <button className="w-9 h-9 rounded-full flex items-center justify-center border border-radr-border hover:bg-radr-surface-2 transition-colors cursor-pointer" style={{ background: "transparent" }} aria-label="Sync calendar">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-muted">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-                <line x1="12" y1="14" x2="12" y2="18" />
-                <line x1="10" y1="16" x2="14" y2="16" />
-              </svg>
-            </button>
-            {/* TODO: wire share */}
-            <button className="w-9 h-9 rounded-full flex items-center justify-center border border-radr-border hover:bg-radr-surface-2 transition-colors cursor-pointer" style={{ background: "transparent" }} aria-label="Share">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-muted">
-                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-                <polyline points="16 6 12 2 8 6" />
-                <line x1="12" y1="2" x2="12" y2="15" />
-              </svg>
-            </button>
-            {/* TODO: wire notifications */}
-            <button className="w-9 h-9 rounded-full flex items-center justify-center border border-radr-border hover:bg-radr-surface-2 transition-colors cursor-pointer" style={{ background: "transparent" }} aria-label="Notifications">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-muted">
-                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 01-3.46 0" />
-              </svg>
-            </button>
-            {/* TODO: wire more menu */}
-            <button className="w-9 h-9 rounded-full flex items-center justify-center border border-radr-border hover:bg-radr-surface-2 transition-colors cursor-pointer" style={{ background: "transparent" }} aria-label="More">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-radr-text-muted">
-                <circle cx="12" cy="5" r="1.5" />
-                <circle cx="12" cy="12" r="1.5" />
-                <circle cx="12" cy="19" r="1.5" />
-              </svg>
-            </button>
-          </div>
+          {/* Action row (interactive — optimistic feedback) */}
+          <GroupActionButtons groupId={group.id} />
         </div>
 
         {/* ============================================================

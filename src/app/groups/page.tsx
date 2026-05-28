@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SiteShell } from "@/components/layout/site-shell";
 import BrandDot from "@/components/brand-dot";
-import { CreateCrewButton } from "./create-crew-prompt";
+import { CreateCrewButton } from "@/components/create-crew-prompt";
 import { MOCK_GROUPS, type MockGroup } from "@/lib/mock-data";
 
 // ----------------------------------------------------------------

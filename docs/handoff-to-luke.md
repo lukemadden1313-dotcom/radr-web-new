@@ -300,24 +300,56 @@ These currently fake success client-side with no persistence. They need real RPC
 | Decline friend request | `/friends` | `friends-content.tsx` | Same as accept — row disappears via `dismissedRequestIds` |
 | Create workout | `/create` | `page.tsx` | Shows success screen with confetti + "View Workout" link → no actual DB insert |
 
+### 4b. Stubbed UI actions (honest stubs — need wiring)
+
+*Added 2026-05-28.* These are elements that were previously dead (no handler / `href="#"`) and are now honest stubs. Three treatment types: **open-in-app** (opens modal with deep link + App Store fallback), **optimistic** (visual state change, resets on reload), **real link** (actual working URL).
+
+| Element | Page | Treatment | What it does now | RPC needed |
+|---|---|---|---|---|
+| Create crew (dashboard) | `/dashboard` | open-in-app | Opens "Crews are made in the app" modal | `create_group(input)` — iOS only for now |
+| Create crew (groups list, 2 buttons) | `/groups` | open-in-app | Same modal | Same |
+| Calendar icon (workout) | `/workouts/[id]` | optimistic | Shows green checkmark for 2s | `add_to_calendar` / .ics download |
+| Share icon (workout) | `/workouts/[id]` | optimistic | Copies URL to clipboard, green checkmark 2s | Web Share API / copy link |
+| Bell icon (workout) | `/workouts/[id]` | optimistic | Toggles filled/outline bell (cobalt) | `toggle_workout_notifications(workout_id)` |
+| Calendar icon (group) | `/groups/[id]` | optimistic | Shows green checkmark for 2s | Calendar sync |
+| Share icon (group) | `/groups/[id]` | optimistic | Copies URL, green checkmark 2s | Web Share API |
+| Bell icon (group) | `/groups/[id]` | optimistic | Toggles filled/outline bell (green) | `toggle_group_notifications(group_id)` |
+| Join/Leave pill (group) | `/groups/[id]` | optimistic | Toggles "Joined" ↔ "+ Join Crew" | `join_group` / `leave_group` |
+| Settings toggles (4) | `/settings` | optimistic | Visual on/off, resets on reload | `update_user_preference(key, value)` |
+| Calendar Sync row | `/settings` | open-in-app | Opens "Calendar Sync lives in the app" modal | Deep link `radr://settings/calendar` |
+| Blocked Users row | `/settings` | open-in-app | Opens "Blocked Users lives in the app" modal | Deep link `radr://settings/blocked` |
+| Log out button | `/settings` | two-tap confirm | First tap: "Tap again to confirm", second: redirects to `/` | Supabase Auth `signOut()` |
+| Instagram link | `/settings` | real link | Opens `https://instagram.com/getradr` | — |
+| TikTok link | `/settings` | real link | Opens `https://tiktok.com/@getradr` | — |
+| X (Twitter) link | `/settings` | real link | Opens `https://x.com/getradr` | — |
+| Contact Us | `/settings` | real link | Opens `mailto:getradrapp@gmail.com` | — |
+| Terms of Service | `/settings` | real link | Links to `/terms.html` | — |
+| Privacy Policy | `/settings` | real link | Links to `/privacy.html` | — |
+| Cookie Policy | `/settings` | real link | Links to `/privacy.html` (shares privacy page) | Needs own page if distinct |
+| "Get the app" link | `/messages/[id]` | real link | Links to App Store | — |
+| RSVP (workout) | `/workouts/[id]` | optimistic | 3-way picker updates Who's Going + feed | `upsert_rsvp(workout_id, status)` |
+| Comment (workout) | `/workouts/[id]` | optimistic | Prepends to feed, clears input | `post_comment(workout_id, body)` |
+| Comment (group) | `/groups/[id]` | optimistic | Prepends to feed, clears input | `post_comment(group_id, 'group', body)` |
+| Edit profile save | `/profile/edit` | optimistic | Shows "Saved ✓", redirects to profile (no persistence) | `updateProfile(username, full_name, bio, avatar_url)` |
+
 ### 5. Placeholder URLs / external links
 
-| Placeholder | File | Current value | What's needed |
+| Placeholder | File | Current value | Status |
 |---|---|---|---|
-| "Don't have the app? Get it" link | `src/app/messages/[conversation_id]/page.tsx:94` | `href="#"` | App Store URL: `https://apps.apple.com/us/app/radr-calendar/id6758311100` (already in footer.tsx) |
-| Open conversation in app | `src/app/messages/[conversation_id]/open-in-radr-button.tsx:8` | `radr://conversation/${conversationId}` | Confirm universal link URL scheme with Luke |
+| "Don't have the app? Get it" link | `src/app/messages/[conversation_id]/page.tsx` | App Store URL | **FIXED** |
+| Open conversation in app | `src/app/messages/[conversation_id]/open-in-radr-button.tsx` | `radr://conversation/${conversationId}` | Confirm universal link URL scheme with Luke |
 | Open workout in app | `src/app/w/[id]/page.tsx:343` | `radr://w/${id}` | Confirm universal link scheme |
 | Open profile in app | `src/app/u/[username]/page.tsx:162` | `radr://u/${username}` | Confirm universal link scheme |
 | Open group in app | `src/app/g/[id]/page.tsx:164` | `radr://g/${id}` | Confirm universal link scheme |
-| Calendar Sync link | `src/app/settings/page.tsx:458` | `href="#"` | Wire to calendar settings or remove |
-| Blocked Users link | `src/app/settings/page.tsx:464` | `href="#"` | Wire to blocked users list or `/settings/blocked` |
-| Instagram link | `src/app/settings/page.tsx:510` | `href="#"` | `https://instagram.com/getradr` (already in footer.tsx) |
-| TikTok link | `src/app/settings/page.tsx:516` | `href="#"` | `https://tiktok.com/@getradr` (already in footer.tsx) |
-| X (Twitter) link | `src/app/settings/page.tsx:522` | `href="#"` | `https://x.com/getradr` (already in footer.tsx) |
-| Contact Us | `src/app/settings/page.tsx:536` | `href="#"` | `mailto:getradrapp@gmail.com` (already in footer.tsx) |
-| Terms of Service | `src/app/settings/page.tsx:542` | `href="#"` | `/terms.html` (already in footer.tsx) |
-| Privacy Policy | `src/app/settings/page.tsx:548` | `href="#"` | `/privacy.html` (already in footer.tsx) |
-| Cookie Policy | `src/app/settings/page.tsx:554` | `href="#"` | Needs page or link |
+| Calendar Sync | `/settings` | open-in-app modal | **FIXED** — deep link `radr://settings/calendar` |
+| Blocked Users | `/settings` | open-in-app modal | **FIXED** — deep link `radr://settings/blocked` |
+| Instagram link | `/settings` | `https://instagram.com/getradr` | **FIXED** |
+| TikTok link | `/settings` | `https://tiktok.com/@getradr` | **FIXED** |
+| X (Twitter) link | `/settings` | `https://x.com/getradr` | **FIXED** |
+| Contact Us | `/settings` | `mailto:getradrapp@gmail.com` | **FIXED** |
+| Terms of Service | `/settings` | `/terms.html` | **FIXED** |
+| Privacy Policy | `/settings` | `/privacy.html` | **FIXED** |
+| Cookie Policy | `/settings` | `/privacy.html` (shares privacy page) | Needs own page if distinct |
 | Footer social links | `src/components/layout/footer.tsx:33` | Real URLs (instagram, tiktok, x) | TODO comment says "Update hrefs when social accounts are confirmed" — verify handles are final |
 
 ### 6. Known data shape contracts

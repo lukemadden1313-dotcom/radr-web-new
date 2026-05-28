@@ -3,6 +3,7 @@ import { SiteShell } from "@/components/layout/site-shell";
 import { AvatarImg } from "@/components/avatar-img";
 import BrandDot from "@/components/brand-dot";
 import { CURRENT_USER, type MockUser } from "@/lib/mock-data";
+import { InteractiveToggleRow, OpenInAppRow, LogOutButton } from "./settings-interactive";
 
 // ----------------------------------------------------------------
 // Helpers
@@ -74,40 +75,7 @@ function UserAvatar({ user, size = 56 }: { user: MockUser; size?: number }) {
   );
 }
 
-// ----------------------------------------------------------------
-// Toggle (visual only)
-// ----------------------------------------------------------------
-
-// TODO: wire toggle state
-function Toggle({ active }: { active: boolean }) {
-  return (
-    <div
-      style={{
-        width: 44,
-        height: 24,
-        borderRadius: 9999,
-        background: active
-          ? "var(--radr-cobalt)"
-          : "rgba(255,255,247,0.12)",
-        position: "relative",
-        transition: "background 200ms",
-      }}
-    >
-      <div
-        style={{
-          width: 20,
-          height: 20,
-          borderRadius: 9999,
-          background: "#FFFFF7",
-          position: "absolute",
-          top: 2,
-          left: active ? 22 : 2,
-          transition: "left 200ms",
-        }}
-      />
-    </div>
-  );
-}
+// Toggle + ToggleRow moved to settings-interactive.tsx (client component for useState)
 
 // ----------------------------------------------------------------
 // Icons (inline SVGs)
@@ -331,34 +299,7 @@ function ExternalRow({
   );
 }
 
-function ToggleRow({
-  icon,
-  label,
-  active,
-  showBorder,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-  showBorder: boolean;
-}) {
-  return (
-    <div
-      className="flex items-center gap-3 py-3.5 px-4"
-      style={{
-        borderTop: showBorder
-          ? "1px solid var(--radr-border)"
-          : undefined,
-      }}
-    >
-      <span className="text-radr-text-muted shrink-0">{icon}</span>
-      <span className="flex-1 text-base font-medium text-radr-text">
-        {label}
-      </span>
-      <Toggle active={active} />
-    </div>
-  );
-}
+// ToggleRow moved to settings-interactive.tsx (InteractiveToggleRow)
 
 // ----------------------------------------------------------------
 // Page
@@ -452,16 +393,16 @@ export default function SettingsPage() {
               href="/notifications"
               showBorder={true}
             />
-            <NavRow
+            <OpenInAppRow
               icon={<IconCalendar />}
               label="Calendar Sync"
-              href="#"
+              deepLink="radr://settings/calendar"
               showBorder={true}
             />
-            <NavRow
+            <OpenInAppRow
               icon={<IconBan />}
               label="Blocked Users"
-              href="#"
+              deepLink="radr://settings/blocked"
               showBorder={true}
             />
           </div>
@@ -472,28 +413,28 @@ export default function SettingsPage() {
             className="rounded-2xl overflow-hidden"
             style={{ background: "var(--radr-surface-1)" }}
           >
-            <ToggleRow
+            <InteractiveToggleRow
               icon={<IconBell />}
               label="Push Notifications"
-              active={true}
+              defaultActive={true}
               showBorder={false}
             />
-            <ToggleRow
+            <InteractiveToggleRow
               icon={<IconMail />}
               label="Email Updates"
-              active={false}
+              defaultActive={false}
               showBorder={true}
             />
-            <ToggleRow
+            <InteractiveToggleRow
               icon={<IconGlobe />}
               label="Public Profile"
-              active={true}
+              defaultActive={true}
               showBorder={true}
             />
-            <ToggleRow
+            <InteractiveToggleRow
               icon={<IconEye />}
               label="Show Workouts on Profile"
-              active={true}
+              defaultActive={true}
               showBorder={true}
             />
           </div>
@@ -507,19 +448,19 @@ export default function SettingsPage() {
             <ExternalRow
               icon={<IconCamera />}
               label="Instagram"
-              href="#"
+              href="https://instagram.com/getradr"
               showBorder={false}
             />
             <ExternalRow
               icon={<IconMusic />}
               label="TikTok"
-              href="#"
+              href="https://tiktok.com/@getradr"
               showBorder={true}
             />
             <ExternalRow
               icon={<IconX />}
               label="X (Twitter)"
-              href="#"
+              href="https://x.com/getradr"
               showBorder={true}
             />
           </div>
@@ -533,25 +474,25 @@ export default function SettingsPage() {
             <ExternalRow
               icon={<IconMail />}
               label="Contact Us"
-              href="#"
+              href="mailto:getradrapp@gmail.com"
               showBorder={false}
             />
             <NavRow
               icon={<IconFileText />}
               label="Terms of Service"
-              href="#"
+              href="/terms.html"
               showBorder={true}
             />
             <NavRow
               icon={<IconShield />}
               label="Privacy Policy"
-              href="#"
+              href="/privacy.html"
               showBorder={true}
             />
             <NavRow
               icon={<IconFileText />}
               label="Cookie Policy"
-              href="#"
+              href="/privacy.html"
               showBorder={true}
             />
           </div>
@@ -560,19 +501,8 @@ export default function SettingsPage() {
         {/* ============================================================
             5. LOG OUT BUTTON
             ============================================================ */}
-        {/* TODO: wire log-out */}
         <div className="px-6 mt-8">
-          <button
-            className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 text-base font-medium cursor-pointer"
-            style={{
-              background: "var(--radr-surface-1)",
-              border: "none",
-              color: "#EF4444",
-            }}
-          >
-            <IconLogOut />
-            Log out
-          </button>
+          <LogOutButton />
         </div>
 
         {/* ============================================================
