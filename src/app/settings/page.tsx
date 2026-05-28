@@ -492,7 +492,7 @@ export default function SettingsPage() {
             <NavRow
               icon={<IconFileText />}
               label="Cookie Policy"
-              href="/privacy.html"
+              href="/cookies.html"
               showBorder={true}
             />
           </div>

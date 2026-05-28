@@ -60,7 +60,7 @@ Each migration: Luke creates Supabase table seeded from the canonical doc, build
 
 **What Luke needs:**
 - Universal Link URL scheme — confirm format for "open conversation [id]" deep link. Web buttons currently use placeholder `radr://conversation/{id}`. Update when confirmed.
-- App Store URL — placeholder "#" on web. Replace when published.
+- App Store URL — now wired to `https://apps.apple.com/us/app/radr-calendar/id6758311100`.
 - `get_conversation(id)` RPC — needed only for the deep-link fallback page to render the correct other-participant's avatar + name. Or this could pull from the existing share-link RPC pattern.
 
 **What Luke does NOT need:**
@@ -177,7 +177,14 @@ Web expects each notification with:
 All docs in `docs/ios-canonical/` are extracted from iOS code and represent the canonical spec for each concept:
 
 - **activities.md** — 82 workout activities + favorites + Something else behavior
-- More to come as we audit per-page (messages, friend states, notifications, group structure, profile fields, settings menu, color palette).
+- **messages.md** — Message types, WORKOUT_CARD encoding, jumbomoji, reactions
+- **friends.md** — Friend states, FriendshipDTO, request flow
+- **workouts.md** — WorkoutDTO, ParticipantProfile, CreateWorkoutDTO
+- **notifications.md** — 13 NotificationCategory types, AppNotification struct
+- **groups.md** — GroupDTO, GroupMemberDTO, conversation link
+- **profiles.md** — User + Profile structs, editable fields, stats
+
+All 7 canonical docs complete. See section 6 below for divergence table status.
 
 ---
 
@@ -325,7 +332,7 @@ These currently fake success client-side with no persistence. They need real RPC
 | Contact Us | `/settings` | real link | Opens `mailto:getradrapp@gmail.com` | — |
 | Terms of Service | `/settings` | real link | Links to `/terms.html` | — |
 | Privacy Policy | `/settings` | real link | Links to `/privacy.html` | — |
-| Cookie Policy | `/settings` | real link | Links to `/privacy.html` (shares privacy page) | Needs own page if distinct |
+| Cookie Policy | `/settings` | real link | Links to `/cookies.html` | — |
 | "Get the app" link | `/messages/[id]` | real link | Links to App Store | — |
 | RSVP (workout) | `/workouts/[id]` | optimistic | 3-way picker updates Who's Going + feed | `upsert_rsvp(workout_id, status)` |
 | Comment (workout) | `/workouts/[id]` | optimistic | Prepends to feed, clears input | `post_comment(workout_id, body)` |
@@ -349,7 +356,7 @@ These currently fake success client-side with no persistence. They need real RPC
 | Contact Us | `/settings` | `mailto:getradrapp@gmail.com` | **FIXED** |
 | Terms of Service | `/settings` | `/terms.html` | **FIXED** |
 | Privacy Policy | `/settings` | `/privacy.html` | **FIXED** |
-| Cookie Policy | `/settings` | `/privacy.html` (shares privacy page) | Needs own page if distinct |
+| Cookie Policy | `/settings` | `/cookies.html` | **FIXED** |
 | Footer social links | `src/components/layout/footer.tsx:33` | Real URLs (instagram, tiktok, x) | TODO comment says "Update hrefs when social accounts are confirmed" — verify handles are final |
 
 ### 6. Known data shape contracts
@@ -376,10 +383,10 @@ Canonical docs in `docs/ios-canonical/`:
 - `MockRecommendation` — no spec. Recommendation engine logic is iOS-only for now.
 - `MockConversation` — partially covered in `messages.md` but web shape (is_pinned, is_muted, unread_count) needs verification.
 
-**Contract fixes still needed (documented, not yet applied):**
+**Contract fixes completed (2026-05-28):**
 
-- `MockGroup`: ALIGNED (2026-05-28). Members shape changed from `MockUser[]` to lean `GroupMember[]` (`{user_id, joined_at, profile: {username, full_name, avatar_url}}`). Added `conversation_id`, `created_at`, `updated_at`. KEPT `description` + `cover_photo_url` as web-leads features (iOS will add — see `docs/ios-needs-to-add.md`). Helper `resolveGroupMember()` converts lean shape → full MockUser for avatar rendering. `upcoming_workouts[]` still embedded for now (TODO: fetch separately when backend ready).
-- `MockUser`: ALIGNED (2026-05-28). Renamed `parties_attended` → `total_workouts`, `joined_at` → `created_at`. Added `current_streak`. KEPT `hosted_count` + `birthday_month` as web-leads features (iOS will add — see `docs/ios-needs-to-add.md`).
+- `MockGroup`: ALIGNED. Members shape changed from `MockUser[]` to lean `GroupMember[]` (`{user_id, joined_at, profile: {username, full_name, avatar_url}}`). Added `conversation_id`, `created_at`, `updated_at`. KEPT `description` + `cover_photo_url` as web-leads features (iOS will add — see `docs/ios-needs-to-add.md`). Helper `resolveGroupMember()` converts lean shape → full MockUser for avatar rendering. `upcoming_workouts[]` still embedded for now (TODO: fetch separately when backend ready).
+- `MockUser`: ALIGNED. Renamed `parties_attended` → `total_workouts`, `joined_at` → `created_at`. Added `current_streak`. KEPT `hosted_count` + `birthday_month` as web-leads features (iOS will add — see `docs/ios-needs-to-add.md`).
 - `/profile/edit` page built: 4 editable fields (avatar, name, username, bio) matching iOS EditProfileView. Optimistic save; TODO: wire `updateProfile(username, full_name, bio, avatar_url)` RPC.
 
 **Web-leads reverse-handoff:** See `docs/ios-needs-to-add.md` for features web has that iOS must add (Maybe RSVP, birthday, hosted count, group description, group cover photo).
@@ -405,7 +412,7 @@ Canonical docs in `docs/ios-canonical/`:
 | `/groups/[id]/members` | Built | Server | Yes — MOCK_GROUPS | Full member list with creator badge |
 | `/profile/[username]` | Built | Server | Yes — getUserByUsername, getMutualFriends, getSharedWorkouts, etc. | Renders with mock data |
 | `/notifications` | Built | Server | Yes — MOCK_NOTIFICATIONS | Renders with mock data, actions are no-ops |
-| `/settings` | Built | Server | Yes — CURRENT_USER | Renders with mock data, toggles/links are no-ops |
+| `/settings` | Built | Server + Client | Yes — CURRENT_USER | Renders with mock data; toggles visual-only (optimistic), social/legal links wired, log out = two-tap confirm |
 | `/create` | Built | Client | Yes — ACTIVITIES, getSuggestedActivities, MOCK_FRIENDS | Visual submit only, no DB insert |
 | `/friends` | Built | Client | Yes — MOCK_FRIENDS, getIncomingFriendRequests, getSuggestedUsers, searchUsers | Optimistic actions, resets on reload |
 | `/messages/[conversation_id]` | Built | Server | Yes — getConversation, getOtherParticipant | Open-in-app landing, needs conversation RPC for real participant name |
@@ -414,3 +421,17 @@ Canonical docs in `docs/ios-canonical/`:
 | `/u/[username]` | Built (Luke's) | Server | No — uses real Supabase | Yes — live with real data |
 | `/w-v2/[id]` | Built (Luke's) | Server | No | Yes — live |
 | `/g-v2/[id]` | Built (Luke's) | Server | No | Yes — live |
+
+---
+
+## Pre-Handoff QA (2026-05-28)
+
+Final QA pass completed before handoff:
+
+- **Partiful benchmark:** Web matches Partiful structurally on all core surfaces. Schedule page + colored workout category cards **lead** Partiful. Two gaps deferred: profile stat badges (→ `docs/future-gamification.md`) and richer dashboard tabs (→ `docs/polish-backlog.md`).
+- **Two polish wins shipped:** RSVP emoji in notifications (Going 👍 / Maybe 🤔 / Can't Go 😢) and glowing RSVP bubble picker on workout detail.
+- **Link sweep:** Full `/w-v2/` and `/g-v2/` codebase sweep — all navigational links verified pointing to correct detail pages (`/workouts/[id]`, `/groups/[id]`).
+- **Dead button sweep:** Every interactive element audited. No button silently does nothing. Treatments: management actions → open-in-app modal, lightweight actions → optimistic visual feedback, external → real URLs. Full catalog in section 4b above.
+- **Settings links:** All 9 dead `href="#"` links resolved (3 social → real URLs, 4 legal/support → real URLs/mailto, 2 management → open-in-app modals).
+- **Custom 404:** `src/app/not-found.tsx` — "Lost the trail." with cobalt BrandDot + back-to-dashboard button.
+- **Build:** Clean pass, all routes render, no TypeScript errors.

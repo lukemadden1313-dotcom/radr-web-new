@@ -27,6 +27,14 @@
 - Levels with visual progression on profile
 - Seasonal resets or rolling leaderboards
 
+## Profile Stat Badges (highest-impact visual win)
+- Redesign the flat stat rectangles (Workouts / Day Streak / Hosted) on the profile page as glowing, designed badge objects
+- Inspiration: Partiful's neon medallion badges — each stat becomes a "trophy" with radial glow, subtle animation, and personality
+- Streak badge could pulse or glow brighter with longer streaks
+- Hosted badge could show a crown/mic icon
+- Workouts badge could show a flame/lightning icon
+- This is the single highest-impact visual upgrade for the profile page — transforms it from "stats grid" to "trophy case"
+
 ## Notes
 - Keep gamification opt-in and positive. Avoid shame mechanics.
 - Streak + badges are highest-value, lowest-effort to implement.
