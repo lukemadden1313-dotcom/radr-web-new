@@ -5,16 +5,18 @@ import { AvatarImg } from "@/components/avatar-img";
 import BrandDot from "@/components/brand-dot";
 import {
   CURRENT_USER,
-  MOCK_WORKOUTS,
   MOCK_GROUPS,
   coverPhotoForActivity,
   categoryDisplayName,
   getWorkoutHost,
+  getWorkoutById,
   getAllKnownUsers,
   type MockUser,
   type MockWorkout,
   type WorkoutParticipant,
+  type RSVPStatus,
 } from "@/lib/mock-data";
+import { RSVPControl } from "./rsvp-control";
 
 // ----------------------------------------------------------------
 // Helpers
@@ -49,8 +51,9 @@ function formatFullDate(iso: string): string {
   return `${weekday}, ${month} ${day} \u00b7 ${time}`;
 }
 
-function isUserGoing(workout: MockWorkout): boolean {
-  return workout.participants.some((p) => p.user_id === CURRENT_USER.id);
+function currentUserRsvp(workout: MockWorkout): RSVPStatus | null {
+  const p = workout.participants.find((p) => p.user_id === CURRENT_USER.id);
+  return p ? p.status : null;
 }
 
 // Resolve a WorkoutParticipant to a MockUser for avatar/name display
@@ -201,10 +204,10 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function WorkoutDetailPage({ params }: Props) {
   const { id } = await params;
-  const workout = MOCK_WORKOUTS.find((w) => w.id === id);
+  const workout = getWorkoutById(id); // TODO: replace with get_workout RPC when backend ready
   if (!workout) notFound();
 
-  const going = isUserGoing(workout);
+  const initialRsvp = currentUserRsvp(workout);
   const group = resolveGroup(workout.group_id);
   const coverUrl = workout.cover_image_url || coverPhotoForActivity(workout.category);
   const dateStr = formatFullDate(workout.start_time);
@@ -317,28 +320,8 @@ export default async function WorkoutDetailPage({ params }: Props) {
             </div>
 
             {/* RSVP pill — bottom right */}
-            <div
-              style={{
-                position: "absolute",
-                bottom: 16,
-                right: 16,
-                padding: "10px 22px",
-                borderRadius: 9999,
-                background: going ? "#0C5DE9" : "rgba(255,255,255,0.95)",
-                border: going ? "1px solid rgba(255,255,255,0.2)" : "none",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                cursor: "pointer",
-              }}
-            >
-              {/* TODO: wire RSVP action */}
-              <span style={{
-                color: going ? "#fff" : "#000",
-                fontSize: 16,
-                fontWeight: 700,
-                lineHeight: 1,
-              }}>
-                {going ? "\ud83d\udc4d Going" : "+ Join"}
-              </span>
+            <div style={{ position: "absolute", bottom: 16, right: 16 }}>
+              <RSVPControl workoutId={workout.id} initialStatus={initialRsvp} />
             </div>
           </div>
         </div>

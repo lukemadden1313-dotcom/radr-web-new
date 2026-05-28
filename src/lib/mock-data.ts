@@ -977,6 +977,11 @@ export function getWorkoutHost(w: MockWorkout): MockUser {
   };
 }
 
+// TODO: replace with get_workout RPC when backend ready
+export function getWorkoutById(id: string): MockWorkout | undefined {
+  return MOCK_WORKOUTS.find((w) => w.id === id);
+}
+
 // Get the display name for a workout's category (maps key to ACTIVITIES list)
 export function categoryDisplayName(key: string): string {
   const activity = ACTIVITIES.find((a) => a.key === key);

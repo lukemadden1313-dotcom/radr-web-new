@@ -172,7 +172,7 @@ function WorkoutCard({ workout }: { workout: MockWorkout }) {
 
   return (
     <a
-      href={`/w-v2/${workout.id}`}
+      href={`/workouts/${workout.id}`}
       style={{
         flexShrink: 0,
         width: 280,
