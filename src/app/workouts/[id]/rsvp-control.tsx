@@ -8,6 +8,7 @@ import type { RSVPStatus } from "@/lib/mock-data";
 type RSVPControlProps = {
   workoutId: string;
   initialStatus: RSVPStatus | null;
+  onStatusChange?: (status: RSVPStatus) => void;
 };
 
 const OPTIONS: { value: RSVPStatus; emoji: string; label: string }[] = [
@@ -58,7 +59,7 @@ function buttonLabel(status: RSVPStatus | null): string {
   }
 }
 
-export function RSVPControl({ workoutId: _workoutId, initialStatus }: RSVPControlProps) {
+export function RSVPControl({ workoutId: _workoutId, initialStatus, onStatusChange }: RSVPControlProps) {
   const [status, setStatus] = useState<RSVPStatus | null>(initialStatus);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -128,6 +129,7 @@ export function RSVPControl({ workoutId: _workoutId, initialStatus }: RSVPContro
                 onClick={() => {
                   setStatus(opt.value);
                   setOpen(false);
+                  onStatusChange?.(opt.value);
                 }}
                 style={{
                   display: "flex",

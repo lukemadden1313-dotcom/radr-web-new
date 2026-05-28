@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { SiteShell } from "@/components/layout/site-shell";
-import { AvatarImg } from "@/components/avatar-img";
-import BrandDot from "@/components/brand-dot";
 import {
   CURRENT_USER,
   MOCK_GROUPS,
@@ -11,30 +9,15 @@ import {
   getWorkoutHost,
   getWorkoutById,
   getAllKnownUsers,
-  type MockUser,
   type MockWorkout,
   type WorkoutParticipant,
   type RSVPStatus,
 } from "@/lib/mock-data";
-import { RSVPControl } from "./rsvp-control";
+import { WorkoutDetailInteractive } from "./workout-detail-interactive";
 
 // ----------------------------------------------------------------
 // Helpers
 // ----------------------------------------------------------------
-
-const AVATAR_GRADIENTS: [string, string][] = [
-  ["#4a5d8f", "#2c3a5e"],
-  ["#8f4a4a", "#5e2c2c"],
-  ["#4a8f6f", "#2c5e4a"],
-  ["#8f7a4a", "#5e4f2c"],
-  ["#5b3d8f", "#3d2c5e"],
-];
-
-function avatarGradient(seed: string): string {
-  const idx = (seed.charCodeAt(0) || 0) % AVATAR_GRADIENTS.length;
-  const [from, to] = AVATAR_GRADIENTS[idx];
-  return `linear-gradient(135deg, ${from}, ${to})`;
-}
 
 function formatFullDate(iso: string): string {
   const d = new Date(iso);
@@ -56,144 +39,54 @@ function currentUserRsvp(workout: MockWorkout): RSVPStatus | null {
   return p ? p.status : null;
 }
 
-// Resolve a WorkoutParticipant to a MockUser for avatar/name display
-function resolveParticipant(p: WorkoutParticipant): MockUser {
+function resolveParticipantUser(p: WorkoutParticipant) {
   const found = getAllKnownUsers().find((u) => u.id === p.user_id);
-  if (found) return found;
+  const fallbackInitial = p.profile.username.charAt(0).toUpperCase();
   return {
-    id: p.user_id,
-    full_name: p.profile.username,
-    username: p.profile.username,
-    avatar_url: p.profile.avatar_url,
-    initials: p.profile.username.charAt(0).toUpperCase(),
-    gradient_seed: p.profile.username.charAt(0).toUpperCase(),
+    id: found?.id ?? p.user_id,
+    full_name: found?.full_name ?? p.profile.username,
+    username: found?.username ?? p.profile.username,
+    avatar_url: found?.avatar_url ?? p.profile.avatar_url,
+    gradient_seed: found?.gradient_seed ?? fallbackInitial,
   };
 }
 
 function resolveGroup(groupId: string | null) {
   if (!groupId) return null;
-  return MOCK_GROUPS.find((g) => g.id === groupId) ?? null;
+  const g = MOCK_GROUPS.find((g) => g.id === groupId);
+  return g ? { id: g.id, name: g.name } : null;
 }
 
-// ----------------------------------------------------------------
-// Mock activity feed (inline for now)
-// TODO: pull from real activity feed RPC
-// ----------------------------------------------------------------
-
-type ActivityItem = {
-  id: string;
-  actor: MockUser;
-  action: string;
-  emoji: string;
-  timeAgo: string;
-};
-
-function buildMockActivity(workout: MockWorkout): ActivityItem[] {
+// Build initial feed items (serializable)
+function buildInitialFeed(workout: MockWorkout) {
   const host = getWorkoutHost(workout);
+  const hostUser = {
+    id: host.id,
+    full_name: host.full_name,
+    username: host.username,
+    avatar_url: host.avatar_url,
+    gradient_seed: host.gradient_seed,
+  };
 
-  // RSVPs: newest first. Filter out host, take up to 4.
   const rsvps = workout.participants
     .filter((p) => p.user_id !== workout.creator_id)
     .slice(0, 4)
-    .map((p, i): ActivityItem => ({
+    .map((p, i) => ({
       id: `a-rsvp-${p.user_id}`,
-      actor: resolveParticipant(p),
-      action: "rsvp'd Going",
-      emoji: "\ud83d\udc4d",
-      // Newest RSVP = smallest timeAgo. Spread from 1h to ~(2*len)h.
-      timeAgo: `${1 + i * 2}h`,
+      type: "rsvp" as const,
+      actor: resolveParticipantUser(p),
+      rsvp_status: p.status,
+      time_label: `${1 + i * 2}h`,
     }));
 
-  // "Created" is always the oldest event (anchor at bottom)
-  const created: ActivityItem = {
+  const created = {
     id: "a-created",
-    actor: host,
-    action: "created this workout",
-    emoji: "",
-    timeAgo: "2d",
+    type: "created" as const,
+    actor: hostUser,
+    time_label: "2d",
   };
 
-  // Newest first → oldest last
   return [...rsvps, created];
-}
-
-// ----------------------------------------------------------------
-// Sub-components
-// ----------------------------------------------------------------
-
-function AvatarFallback({
-  name,
-  seed,
-  size,
-  className = "",
-}: {
-  name: string;
-  seed: string;
-  size: number;
-  className?: string;
-}) {
-  return (
-    <span
-      className={`rounded-full shrink-0 flex items-center justify-center text-white font-semibold ${className}`}
-      style={{
-        width: size,
-        height: size,
-        background: avatarGradient(seed),
-        fontSize: size * 0.4,
-      }}
-    >
-      {(name || "?").charAt(0).toUpperCase()}
-    </span>
-  );
-}
-
-function UserAvatar({
-  user,
-  size = 48,
-  className = "",
-}: {
-  user: MockUser;
-  size?: number;
-  className?: string;
-}) {
-  if (user.avatar_url) {
-    return (
-      <AvatarImg
-        src={user.avatar_url}
-        alt={user.full_name}
-        width={size}
-        height={size}
-        className={`rounded-full object-cover shrink-0 ${className}`}
-        fallback={
-          <AvatarFallback
-            name={user.full_name}
-            seed={user.gradient_seed}
-            size={size}
-            className={className}
-          />
-        }
-      />
-    );
-  }
-  return (
-    <AvatarFallback
-      name={user.full_name}
-      seed={user.gradient_seed}
-      size={size}
-      className={className}
-    />
-  );
-}
-
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <h2
-      className="font-bold italic text-radr-text mb-4"
-      style={{ fontSize: "var(--radr-text-h1)" }}
-    >
-      {title}<BrandDot />
-    </h2>
-  );
 }
 
 // ----------------------------------------------------------------
@@ -207,20 +100,37 @@ export default async function WorkoutDetailPage({ params }: Props) {
   const workout = getWorkoutById(id); // TODO: replace with get_workout RPC when backend ready
   if (!workout) notFound();
 
-  const initialRsvp = currentUserRsvp(workout);
+  const host = getWorkoutHost(workout);
   const group = resolveGroup(workout.group_id);
   const coverUrl = workout.cover_image_url || coverPhotoForActivity(workout.category);
-  const dateStr = formatFullDate(workout.start_time);
-  const goingCount = workout.participants.length;
-  const locationParts = workout.location ? workout.location.split(",").map((s) => s.trim()) : [];
-  const activityItems = buildMockActivity(workout);
-  const host = getWorkoutHost(workout);
+
+  const hostUser = {
+    id: host.id,
+    full_name: host.full_name,
+    username: host.username,
+    avatar_url: host.avatar_url,
+    gradient_seed: host.gradient_seed,
+  };
+
+  const meUser = {
+    id: CURRENT_USER.id,
+    full_name: CURRENT_USER.full_name,
+    username: CURRENT_USER.username,
+    avatar_url: CURRENT_USER.avatar_url,
+    gradient_seed: CURRENT_USER.gradient_seed,
+  };
+
+  const serializedParticipants = workout.participants.map((p) => ({
+    user_id: p.user_id,
+    status: p.status,
+    user: resolveParticipantUser(p),
+  }));
 
   return (
     <SiteShell glow="cobalt">
       <div className="max-w-2xl mx-auto">
         {/* ============================================================
-            1. BACK + CONTEXT ROW
+            BACK + CONTEXT ROW  (server-rendered, no interactivity)
             ============================================================ */}
         <div
           className="flex items-center justify-between px-6 py-3"
@@ -250,7 +160,6 @@ export default async function WorkoutDetailPage({ params }: Props) {
                 From {group.name}
               </Link>
             )}
-            {/* TODO: wire "more" menu */}
             <button
               className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-radr-surface-2 transition-colors cursor-pointer"
               style={{ background: "transparent", border: "none" }}
@@ -266,276 +175,25 @@ export default async function WorkoutDetailPage({ params }: Props) {
         </div>
 
         {/* ============================================================
-            2. COVER HERO
+            INTERACTIVE REGION (cover → activity → comments)
             ============================================================ */}
-        <div className="px-6">
-          <div
-            style={{
-              position: "relative",
-              borderRadius: 24,
-              overflow: "hidden",
-              aspectRatio: "16 / 11",
-              background: workout.cover_gradient || "var(--radr-cobalt)",
-            }}
-          >
-            <img
-              src={coverUrl}
-              alt=""
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-              }}
-            />
-
-            {/* Gradient overlay */}
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.2) 100%)",
-                pointerEvents: "none",
-              }}
-            />
-
-            {/* Activity label — top right */}
-            <div
-              style={{
-                position: "absolute",
-                top: 16,
-                right: 16,
-                padding: "5px 12px",
-                borderRadius: 9999,
-                background: "rgba(12, 93, 233, 0.75)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                border: "1px solid rgba(255, 255, 255, 0.15)",
-              }}
-            >
-              <span style={{ color: "#fff", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                {categoryDisplayName(workout.category)}
-              </span>
-            </div>
-
-            {/* RSVP pill — bottom right */}
-            <div style={{ position: "absolute", bottom: 16, right: 16 }}>
-              <RSVPControl workoutId={workout.id} initialStatus={initialRsvp} />
-            </div>
-          </div>
-        </div>
-
-        {/* ============================================================
-            3. TITLE + DATE BLOCK
-            ============================================================ */}
-        <div className="px-6 pt-5">
-          <h1
-            className="font-bold text-radr-text leading-tight"
-            style={{ fontSize: "clamp(1.75rem, 5vw, 2.25rem)" }}
-          >
-            {workout.title}
-          </h1>
-
-          <p
-            className="mt-2 text-radr-text-muted font-medium"
-            style={{ fontSize: "1.125rem" }}
-          >
-            {dateStr}
-          </p>
-
-          {/* Action row */}
-          <div className="flex items-center gap-4 mt-4">
-            {/* TODO: wire calendar add */}
-            <button className="w-9 h-9 rounded-full flex items-center justify-center border border-radr-border hover:bg-radr-surface-2 transition-colors cursor-pointer" style={{ background: "transparent" }} aria-label="Add to calendar">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-muted">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-                <line x1="12" y1="14" x2="12" y2="18" />
-                <line x1="10" y1="16" x2="14" y2="16" />
-              </svg>
-            </button>
-            {/* TODO: wire share */}
-            <button className="w-9 h-9 rounded-full flex items-center justify-center border border-radr-border hover:bg-radr-surface-2 transition-colors cursor-pointer" style={{ background: "transparent" }} aria-label="Share">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-muted">
-                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-                <polyline points="16 6 12 2 8 6" />
-                <line x1="12" y1="2" x2="12" y2="15" />
-              </svg>
-            </button>
-            {/* TODO: wire notifications toggle */}
-            <button className="w-9 h-9 rounded-full flex items-center justify-center border border-radr-border hover:bg-radr-surface-2 transition-colors cursor-pointer" style={{ background: "transparent" }} aria-label="Notifications">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-muted">
-                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 01-3.46 0" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* ============================================================
-            4. HOSTED BY ROW
-            ============================================================ */}
-        <div className="px-6 mt-6">
-          <p className="text-sm text-radr-text-muted mb-2">Hosted by</p>
-          <div className="flex items-center gap-3">
-            <Link href={`/profile/${host.username}`} className="no-underline text-inherit flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
-              <UserAvatar user={host} size={40} />
-              <div className="min-w-0">
-                <p className="font-medium text-radr-text" style={{ fontSize: "1.125rem" }}>
-                  {host.full_name}
-                </p>
-                <p className="text-sm text-radr-text-muted">
-                  @{host.username}
-                </p>
-              </div>
-            </Link>
-          </div>
-        </div>
-
-        {/* ============================================================
-            5. LOCATION ROW
-            ============================================================ */}
-        {locationParts.length > 0 && (
-          <div className="px-6 mt-5">
-            <div className="flex gap-3" style={{ alignItems: "flex-start" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" style={{ color: "var(--radr-cobalt)" }}>
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0Z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              <div className="min-w-0">
-                <p className="font-medium text-radr-text">
-                  {locationParts[0]}
-                </p>
-                {locationParts.length > 1 && (
-                  <p className="text-sm text-radr-text-muted mt-0.5">
-                    {locationParts.slice(1).join(", ")}
-                  </p>
-                )}
-                {workout.booking_url && (
-                  <a
-                    href={workout.booking_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm font-semibold mt-2 no-underline"
-                    style={{ color: "var(--radr-cobalt)" }}
-                  >
-                    Book a spot &rarr;
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================
-            6. DESCRIPTION
-            ============================================================ */}
-        {workout.description && (
-          <div className="px-6 mt-6">
-            <p className="text-base text-radr-text-muted leading-relaxed whitespace-pre-line">
-              {workout.description}
-            </p>
-          </div>
-        )}
-
-        {/* ============================================================
-            7. WHO'S GOING
-            ============================================================ */}
-        <div className="px-6 mt-10">
-          <SectionHeader title="Who's Going" />
-          <p className="text-sm text-radr-text-muted -mt-2 mb-5">
-            {goingCount} going
-          </p>
-
-          {goingCount > 0 ? (
-            <div className="flex flex-wrap gap-4">
-              {workout.participants.map((p) => {
-                const user = resolveParticipant(p);
-                return (
-                  <Link
-                    key={p.user_id}
-                    href={`/profile/${user.username}`}
-                    className="flex flex-col items-center gap-1.5 no-underline text-inherit"
-                    style={{ width: 72 }}
-                  >
-                    <UserAvatar user={user} size={44} />
-                    <span className="text-xs text-radr-text-muted text-center leading-tight truncate w-full">
-                      {user.full_name.split(" ")[0]}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-radr-text-dim italic">
-              Nobody yet &mdash; be the first to lock in.
-            </p>
-          )}
-        </div>
-
-        {/* ============================================================
-            8. ACTIVITY FEED
-            ============================================================ */}
-        <div className="px-6 mt-10">
-          <SectionHeader title="Activity" />
-
-          <div className="flex flex-col">
-            {activityItems.map((item, i) => (
-              <div
-                key={item.id}
-                className="flex items-start gap-3 py-3"
-                style={i > 0 ? { borderTop: "1px solid rgba(255,255,247,0.08)" } : undefined}
-              >
-                <Link href={`/profile/${item.actor.username}`} className="no-underline shrink-0">
-                  <UserAvatar user={item.actor} size={32} className="mt-0.5" />
-                </Link>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm">
-                    <Link href={`/profile/${item.actor.username}`} className="no-underline font-medium text-radr-text hover:underline">{item.actor.full_name.split(" ")[0]}</Link>
-                    {" "}
-                    <span className="text-radr-text-muted">{item.action}</span>
-                    {item.emoji && ` ${item.emoji}`}
-                  </p>
-                  <p className="text-xs text-radr-text-dim mt-0.5">
-                    {item.timeAgo}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Comment input */}
-          <div className="flex items-center gap-3 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,247,0.08)" }}>
-            <UserAvatar user={CURRENT_USER} size={32} />
-            <div
-              className="flex-1 flex items-center rounded-full border border-radr-border px-4"
-              style={{ height: 40, background: "rgba(255,255,247,0.04)" }}
-            >
-              {/* TODO: wire comment submit when backend ready */}
-              <input
-                type="text"
-                placeholder="Add a comment..."
-                className="flex-1 bg-transparent text-sm text-radr-text placeholder-radr-text-dim outline-none border-none"
-                readOnly
-              />
-              <button
-                className="text-sm font-semibold ml-2 cursor-pointer"
-                style={{ color: "var(--radr-cobalt)", background: "transparent", border: "none" }}
-                disabled
-              >
-                Post
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ============================================================
-            9. FOOTER SPACING
-            ============================================================ */}
-        <div style={{ height: 80 }} />
+        <WorkoutDetailInteractive
+          workoutId={workout.id}
+          coverUrl={coverUrl}
+          coverGradient={workout.cover_gradient || "var(--radr-cobalt)"}
+          categoryLabel={categoryDisplayName(workout.category)}
+          title={workout.title}
+          dateStr={formatFullDate(workout.start_time)}
+          host={hostUser}
+          locationParts={workout.location ? workout.location.split(",").map((s) => s.trim()) : []}
+          bookingUrl={workout.booking_url}
+          description={workout.description}
+          groupChip={group}
+          initialRsvp={currentUserRsvp(workout)}
+          initialParticipants={serializedParticipants}
+          initialFeed={buildInitialFeed(workout)}
+          currentUser={meUser}
+        />
       </div>
     </SiteShell>
   );
