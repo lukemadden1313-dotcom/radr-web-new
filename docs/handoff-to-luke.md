@@ -329,18 +329,23 @@ Canonical docs in `docs/ios-canonical/`:
 | `friends.md` | Friend states, FriendshipDTO model, request flow, UI audit | Complete |
 | `workouts.md` | WorkoutDTO fields, ParticipantProfile shape, CreateWorkoutDTO, MockWorkout divergence table | Complete |
 | `notifications.md` | NotificationCategory enum (13 types), AppNotification struct, MockNotification divergence table | Complete |
+| `groups.md` | GroupDTO fields, GroupMemberDTO shape, no roles/visibility, conversation link, MockGroup divergence table | Complete |
+| `profiles.md` | User + Profile structs, editable fields (4), stats (totalWorkouts/currentStreak), MockUser divergence table | Complete |
 
 **Contract fixes completed (2026-05-27):**
 
 - **MockWorkout:** ALIGNED. Flattened `host` → `creator_id + creator_username + creator_full_name + creator_avatar_url`. Removed `cohosts` and `participant_cap`. `participants` now `WorkoutParticipant[]` matching iOS shape (`{user_id, status, profile: {username, avatar_url}}`). `location` and `description` are now optional. Added `duration` (minutes). Renamed `activity_type` → `category` using iOS camelCase keys. Added `RSVPStatus` type (`"going" | "maybe" | "cant"`). `cover_image_url` and `cover_gradient` are now optional web-only fields. Helper `getWorkoutHost(w)` builds a MockUser from flat fields. Helper `categoryDisplayName(key)` resolves display names from ACTIVITIES list.
 - **MockNotification:** ALIGNED. Replaced embedded-object model with iOS flat model: `{id, type, message, actor_id, entity_id, related_id, is_read, created_at}`. Adopted all 13 iOS NotificationCategory types. Removed invented types (`rsvp_yes`, `rsvp_maybe`, `group_invite`). `message` is now pre-rendered (display directly). `is_read` replaces inverted `unread`. Helpers `getNotificationActor(n)` and `getNotificationLink(n)` resolve actor/routing from IDs.
 
-**Mock types still WITHOUT a canonical iOS doc:**
+**All five core data contracts audited.** Mock types still without a canonical iOS doc:
 
-- `MockGroup` — no `groups.md` audit yet. `cover_gradient`, `upcoming_workouts[]` embedded shape needs verification.
 - `MockRecommendation` — no spec. Recommendation engine logic is iOS-only for now.
 - `MockConversation` — partially covered in `messages.md` but web shape (is_pinned, is_muted, unread_count) needs verification.
-- Profile fields — no `profiles.md` audit. `MockUser` has `parties_attended`, `hosted_count`, `birthday_month`, `joined_at`, `bio` — verify which exist on iOS `profiles` table.
+
+**Contract fixes still needed (documented, not yet applied):**
+
+- `MockGroup`: remove `description` (invented), `cover_photo_url` (invented). Members shape wrong (`MockUser[]` should be lean `{user_id, joined_at, profile}`). `upcoming_workouts[]` should not be embedded — fetch separately. Add `conversation_id`. See `groups.md` divergence table.
+- `MockUser`: rename `parties_attended` → `total_workouts`, remove `hosted_count` (not an iOS field), remove `birthday_month` (not in iOS), rename `joined_at` → `created_at`. Add `total_workouts`, `current_streak`. See `profiles.md` divergence table.
 
 ### 7. Inherited backlog (still open)
 
