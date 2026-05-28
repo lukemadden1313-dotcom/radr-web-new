@@ -143,6 +143,7 @@ export const CURRENT_USER: MockUser = {
   avatar_url: null,
   initials: "EG",
   gradient_seed: "E",
+  bio: "Always down to move. NYC.",
   birthday_month: "August",
   created_at: "2024-07-15T00:00:00Z",
   total_workouts: 19,

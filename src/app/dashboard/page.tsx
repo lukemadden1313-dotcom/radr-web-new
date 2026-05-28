@@ -359,7 +359,7 @@ function CreateWorkoutCard() {
 function GroupCard({ group }: { group: MockGroup }) {
   return (
     <Link
-      href={`/g-v2/${group.id}`}
+      href={`/groups/${group.id}`}
       className="shrink-0 w-[180px] rounded-card border border-radr-border overflow-hidden no-underline text-inherit hover:border-radr-green/40 transition-colors group"
     >
       {/* Cover */}

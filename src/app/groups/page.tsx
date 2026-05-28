@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteShell } from "@/components/layout/site-shell";
 import BrandDot from "@/components/brand-dot";
+import { CreateCrewButton } from "./create-crew-prompt";
 import { MOCK_GROUPS, type MockGroup } from "@/lib/mock-data";
 
 // ----------------------------------------------------------------
@@ -109,16 +110,12 @@ export default function GroupsPage() {
             <span className="text-sm font-medium">Back</span>
           </Link>
 
-          {/* Crew creation is app-only — prompt user to open Radr */}
-          <a
-            href="https://apps.apple.com/us/app/radr-calendar/id6758311100"
-            target="_blank"
-            rel="noopener noreferrer"
+          <CreateCrewButton
             className="py-1.5 px-3.5 rounded-full text-sm font-semibold text-white no-underline"
             style={{ background: "var(--radr-green)" }}
           >
-            + Create in App
-          </a>
+            + Create
+          </CreateCrewButton>
         </div>
 
         {/* ============================================================
@@ -195,16 +192,12 @@ export default function GroupsPage() {
             <p className="text-base text-radr-text-dim italic">
               No crews yet. Start one with your people.
             </p>
-            {/* Crew creation is app-only — prompt user to open Radr */}
-            <a
-              href="https://apps.apple.com/us/app/radr-calendar/id6758311100"
-              target="_blank"
-              rel="noopener noreferrer"
+            <CreateCrewButton
               className="inline-block mt-5 py-2.5 px-5 rounded-full text-sm font-semibold text-white no-underline"
               style={{ background: "var(--radr-green)" }}
             >
-              + Create your first crew in the app
-            </a>
+              + Create your first crew
+            </CreateCrewButton>
           </div>
         )}
       </div>
