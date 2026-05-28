@@ -210,16 +210,16 @@ export default async function ProfilePage({ params }: Props) {
           </p>
 
           {/* Self: birthday + joined */}
-          {isSelf && (user.birthday_month || user.joined_at) && (
+          {isSelf && (user.birthday_month || user.created_at) && (
             <p className="mt-2 text-sm text-radr-text-muted">
               {user.birthday_month && (
                 <span>{"\ud83c\udf82"} {user.birthday_month} birthday</span>
               )}
-              {user.birthday_month && user.joined_at && (
+              {user.birthday_month && user.created_at && (
                 <span> &middot; </span>
               )}
-              {user.joined_at && (
-                <span>{"\u2728"} {formatJoinedDate(user.joined_at)}</span>
+              {user.created_at && (
+                <span>{"\u2728"} {formatJoinedDate(user.created_at)}</span>
               )}
             </p>
           )}
@@ -247,13 +247,13 @@ export default async function ProfilePage({ params }: Props) {
         <div className="px-6 mt-6 flex items-center justify-center gap-3">
           {isSelf ? (
             <>
-              {/* TODO: wire edit profile */}
-              <button
-                className="px-8 py-3 rounded-full font-semibold text-base cursor-pointer"
-                style={{ background: "var(--radr-text)", color: "var(--radr-bg)", border: "none" }}
+              <Link
+                href="/profile/edit"
+                className="px-8 py-3 rounded-full font-semibold text-base no-underline"
+                style={{ background: "var(--radr-text)", color: "var(--radr-bg)" }}
               >
                 Edit profile
-              </button>
+              </Link>
               <Link
                 href="/settings"
                 className="w-12 h-12 rounded-full flex items-center justify-center no-underline"
@@ -289,30 +289,46 @@ export default async function ProfilePage({ params }: Props) {
         {/* ============================================================
             4. STATS / BADGES (self view only)
             ============================================================ */}
-        {isSelf && (user.parties_attended != null || user.hosted_count != null) && (
+        {isSelf && (user.total_workouts != null || user.current_streak != null || user.hosted_count != null) && (
           <div className="px-6 mt-8 grid grid-cols-2 gap-3">
+            {/* iOS-canonical stats */}
             <div
               className="rounded-2xl py-5 px-4 text-center border border-radr-border"
               style={{ background: "radial-gradient(ellipse at center, rgba(154, 90, 240, 0.05), transparent 70%), var(--radr-surface-1)" }}
             >
               <p className="text-3xl font-bold text-radr-text">
-                {user.parties_attended ?? 0}
+                {user.total_workouts ?? 0}
               </p>
               <p className="text-xs font-semibold text-radr-text-muted mt-1 uppercase" style={{ letterSpacing: "0.08em" }}>
-                Workouts Attended
+                Workouts
               </p>
             </div>
             <div
               className="rounded-2xl py-5 px-4 text-center border border-radr-border"
               style={{ background: "radial-gradient(ellipse at center, rgba(154, 90, 240, 0.05), transparent 70%), var(--radr-surface-1)" }}
             >
-              <p className="text-3xl font-bold text-radr-text">
-                {user.hosted_count ?? 0}
+              <p className="text-3xl font-bold text-radr-text flex items-center justify-center gap-1.5">
+                {user.current_streak ?? 0}
+                {(user.current_streak ?? 0) > 0 && <span style={{ fontSize: "1.25rem" }}>{"\uD83D\uDD25"}</span>}
               </p>
               <p className="text-xs font-semibold text-radr-text-muted mt-1 uppercase" style={{ letterSpacing: "0.08em" }}>
-                Workouts Hosted
+                Day Streak
               </p>
             </div>
+            {/* Web-leads stats */}
+            {user.hosted_count != null && (
+              <div
+                className="rounded-2xl py-5 px-4 text-center border border-radr-border col-span-2"
+                style={{ background: "var(--radr-surface-1)" }}
+              >
+                <p className="text-3xl font-bold text-radr-text">
+                  {user.hosted_count}
+                </p>
+                <p className="text-xs font-semibold text-radr-text-muted mt-1 uppercase" style={{ letterSpacing: "0.08em" }}>
+                  Hosted
+                </p>
+              </div>
+            )}
           </div>
         )}
 

@@ -10,11 +10,12 @@ export type MockUser = {
   avatar_url: string | null;
   initials: string;
   gradient_seed: string;
-  birthday_month?: string;
-  joined_at?: string;
+  birthday_month?: string; // web-leads: iOS will add, see docs/ios-needs-to-add.md
+  created_at?: string;
   bio?: string;
-  parties_attended?: number;
-  hosted_count?: number;
+  total_workouts?: number;
+  current_streak?: number;
+  hosted_count?: number; // web-leads: iOS will add, see docs/ios-needs-to-add.md
 };
 
 export type RSVPStatus = "going" | "maybe" | "cant";
@@ -130,8 +131,9 @@ export const CURRENT_USER: MockUser = {
   initials: "EG",
   gradient_seed: "E",
   birthday_month: "August",
-  joined_at: "2024-07-15T00:00:00Z",
-  parties_attended: 19,
+  created_at: "2024-07-15T00:00:00Z",
+  total_workouts: 19,
+  current_streak: 5,
   hosted_count: 4,
 };
 
@@ -144,8 +146,9 @@ export const MOCK_FRIENDS: MockUser[] = [
     initials: "LM",
     gradient_seed: "L",
     birthday_month: "March",
-    joined_at: "2024-06-01T00:00:00Z",
-    parties_attended: 31,
+    created_at: "2024-06-01T00:00:00Z",
+    total_workouts: 31,
+    current_streak: 12,
     hosted_count: 8,
   },
   {
@@ -164,8 +167,9 @@ export const MOCK_FRIENDS: MockUser[] = [
     initials: "MR",
     gradient_seed: "M",
     birthday_month: "November",
-    joined_at: "2024-08-20T00:00:00Z",
-    parties_attended: 22,
+    created_at: "2024-08-20T00:00:00Z",
+    total_workouts: 22,
+    current_streak: 3,
     hosted_count: 6,
   },
   {
@@ -176,8 +180,9 @@ export const MOCK_FRIENDS: MockUser[] = [
     initials: "KS",
     gradient_seed: "K",
     birthday_month: "January",
-    joined_at: "2024-09-10T00:00:00Z",
-    parties_attended: 14,
+    created_at: "2024-09-10T00:00:00Z",
+    total_workouts: 14,
+    current_streak: 0,
     hosted_count: 3,
   },
   {

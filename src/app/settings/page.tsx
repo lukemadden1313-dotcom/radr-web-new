@@ -443,7 +443,7 @@ export default function SettingsPage() {
             <NavRow
               icon={<IconUser />}
               label="Edit Profile"
-              href={`/profile/${CURRENT_USER.username}`}
+              href="/profile/edit"
               showBorder={false}
             />
             <NavRow

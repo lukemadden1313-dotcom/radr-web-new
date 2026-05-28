@@ -91,6 +91,7 @@ Each migration: Luke creates Supabase table seeded from the canonical doc, build
 | `/workouts/[id]` | Workout detail | Built | `get_workout(id)`, `get_workout_activity(workout_id)` |
 | `/groups/[id]` | Group detail | Built | Expanded `get_group_for_deep_link` (see Open Backlog #2) |
 | `/profile/[username]` | Profile (self + other) | Built | `get_profile_by_username`, `get_mutual_friends`, `get_shared_workouts`, `get_workouts_hosted_by_user`, `get_workouts_user_could_join` |
+| `/profile/edit` | Edit profile (4 fields) | Built | `updateProfile(username, full_name, bio, avatar_url)` |
 | `/notifications` | Activity feed | Built | `get_notifications`, `mark_notification_read`, `mark_all_notifications_read` |
 | `/schedule` | Month grid + day drawer | Built | `get_workouts_in_month(year, month)` |
 | `/groups` | All your groups | Built | `get_user_groups` |
@@ -345,7 +346,10 @@ Canonical docs in `docs/ios-canonical/`:
 **Contract fixes still needed (documented, not yet applied):**
 
 - `MockGroup`: remove `description` (invented), `cover_photo_url` (invented). Members shape wrong (`MockUser[]` should be lean `{user_id, joined_at, profile}`). `upcoming_workouts[]` should not be embedded — fetch separately. Add `conversation_id`. See `groups.md` divergence table.
-- `MockUser`: rename `parties_attended` → `total_workouts`, remove `hosted_count` (not an iOS field), remove `birthday_month` (not in iOS), rename `joined_at` → `created_at`. Add `total_workouts`, `current_streak`. See `profiles.md` divergence table.
+- `MockUser`: ALIGNED (2026-05-28). Renamed `parties_attended` → `total_workouts`, `joined_at` → `created_at`. Added `current_streak`. KEPT `hosted_count` + `birthday_month` as web-leads features (iOS will add — see `docs/ios-needs-to-add.md`).
+- `/profile/edit` page built: 4 editable fields (avatar, name, username, bio) matching iOS EditProfileView. Optimistic save; TODO: wire `updateProfile(username, full_name, bio, avatar_url)` RPC.
+
+**Web-leads reverse-handoff:** See `docs/ios-needs-to-add.md` for features web has that iOS must add (Maybe RSVP, birthday, hosted count, group description, group cover photo).
 
 ### 7. Inherited backlog (still open)
 
