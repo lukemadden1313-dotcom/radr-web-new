@@ -163,7 +163,7 @@ Open question: does iOS already have an equivalent RPC? If yes, web should use t
 Web expects each notification with:
 - id (UUID)
 - type (one of iOS's 13 NotificationCategory values: `friend_request`, `friend_request_accepted`, `upcoming_activity`, `workout_update`, `workout_invite`, `friend_workout`, `workout_join`, `workout_reaction`, `workout_comment`, `new_message`, `calendar_error`, `profile_view`, `general`)
-- message (pre-rendered string — display directly, do NOT assemble from type + actor)
+- message (pre-rendered string — display directly, do NOT assemble from type + actor. **IMPORTANT for RSVP notifications:** include status emoji inline: "Name rsvp'd Going 👍 to Workout Title", "Name rsvp'd Maybe 🤔 to ...", "Name rsvp'd Can't Go 😢 to ...". Web renders this as-is for at-a-glance scanning.)
 - actor_id (UUID string | null — resolve avatar via profile lookup)
 - entity_id (UUID string | null — canonical target: workout ID, profile ID)
 - related_id (UUID string | null — context-dependent: conversation ID, etc.)

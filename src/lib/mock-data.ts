@@ -723,7 +723,7 @@ export const MOCK_NOTIFICATIONS: MockNotification[] = [
   {
     id: "n1",
     type: "workout_join",
-    message: "Finn joined your workout Good Saturdays is back!!",
+    message: "Finn rsvp\u2019d Going \ud83d\udc4d to Good Saturdays is back!!",
     actor_id: finn.id,
     entity_id: "w-good-sat",
     related_id: null,
@@ -803,7 +803,7 @@ export const MOCK_NOTIFICATIONS: MockNotification[] = [
   {
     id: "n9",
     type: "workout_join",
-    message: "Danny joined your workout Morning shake-out run",
+    message: "Danny rsvp\u2019d Going \ud83d\udc4d to Morning shake-out run",
     actor_id: danny.id,
     entity_id: "w-today-run",
     related_id: null,

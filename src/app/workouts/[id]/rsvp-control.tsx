@@ -11,10 +11,10 @@ type RSVPControlProps = {
   onStatusChange?: (status: RSVPStatus) => void;
 };
 
-const OPTIONS: { value: RSVPStatus; emoji: string; label: string }[] = [
-  { value: "going", emoji: "\u{1F44D}", label: "Going" },
-  { value: "maybe", emoji: "\u{1F914}", label: "Maybe" },
-  { value: "cant", emoji: "\u{1F6AB}", label: "Can\u2019t go" },
+const OPTIONS: { value: RSVPStatus; emoji: string; label: string; glowColor: string }[] = [
+  { value: "going", emoji: "\u{1F44D}", label: "Going", glowColor: "12, 93, 233" },    // cobalt
+  { value: "maybe", emoji: "\u{1F914}", label: "Maybe", glowColor: "245, 166, 35" },    // amber
+  { value: "cant", emoji: "\u{1F622}", label: "Can\u2019t go", glowColor: "255, 255, 247" }, // dim
 ];
 
 function buttonStyle(status: RSVPStatus | null): React.CSSProperties {
@@ -103,26 +103,25 @@ export function RSVPControl({ workoutId: _workoutId, initialStatus, onStatusChan
         {buttonLabel(status)}
       </button>
 
-      {/* Dropdown menu */}
+      {/* Dropdown menu — glowing emoji bubbles */}
       {open && (
         <div
           style={{
             position: "absolute",
-            bottom: "calc(100% + 8px)",
+            bottom: "calc(100% + 12px)",
             right: 0,
-            minWidth: 180,
-            background: "rgba(30,30,34,0.96)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            borderRadius: 14,
-            border: "1px solid rgba(255,255,247,0.12)",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-            overflow: "hidden",
+            display: "flex",
+            gap: 8,
             zIndex: 50,
           }}
         >
-          {OPTIONS.map((opt, i) => {
+          {OPTIONS.map((opt) => {
             const selected = status === opt.value;
+            const glowOpacity = selected ? 0.45 : 0.15;
+            const ringBorder = selected
+              ? `2px solid rgba(${opt.glowColor}, 0.7)`
+              : "1px solid rgba(255,255,247,0.12)";
+
             return (
               <button
                 key={opt.value}
@@ -133,39 +132,54 @@ export function RSVPControl({ workoutId: _workoutId, initialStatus, onStatusChan
                 }}
                 style={{
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
-                  gap: 10,
-                  width: "100%",
-                  padding: "12px 16px",
-                  background: selected ? "rgba(12,93,233,0.15)" : "transparent",
-                  border: "none",
-                  borderTop: i > 0 ? "1px solid rgba(255,255,247,0.08)" : "none",
+                  gap: 4,
+                  padding: "14px 16px 10px",
+                  minWidth: 80,
+                  background: `radial-gradient(ellipse at center, rgba(${opt.glowColor}, ${glowOpacity}) 0%, rgba(30,30,34,0.96) 70%)`,
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
+                  borderRadius: 16,
+                  border: ringBorder,
+                  boxShadow: selected
+                    ? `0 0 20px rgba(${opt.glowColor}, 0.3), 0 8px 32px rgba(0,0,0,0.5)`
+                    : "0 8px 32px rgba(0,0,0,0.5)",
                   cursor: "pointer",
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: selected ? "#5B9BFF" : "rgba(255,255,247,0.8)",
-                  transition: "background 100ms ease",
+                  transition: "all 150ms ease",
                 }}
                 onMouseEnter={(e) => {
-                  if (!selected) e.currentTarget.style.background = "rgba(255,255,247,0.06)";
+                  if (!selected) {
+                    e.currentTarget.style.background = `radial-gradient(ellipse at center, rgba(${opt.glowColor}, 0.25) 0%, rgba(30,30,34,0.96) 70%)`;
+                    e.currentTarget.style.border = `1px solid rgba(${opt.glowColor}, 0.35)`;
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = selected ? "rgba(12,93,233,0.15)" : "transparent";
+                  e.currentTarget.style.background = `radial-gradient(ellipse at center, rgba(${opt.glowColor}, ${glowOpacity}) 0%, rgba(30,30,34,0.96) 70%)`;
+                  e.currentTarget.style.border = ringBorder;
                 }}
               >
-                <span style={{ fontSize: 18 }}>{opt.emoji}</span>
-                <span>{opt.label}</span>
+                <span style={{ fontSize: 28, lineHeight: 1 }}>{opt.emoji}</span>
+                <span style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: selected ? `rgba(${opt.glowColor}, 1)` : "rgba(255,255,247,0.65)",
+                  letterSpacing: "0.02em",
+                  whiteSpace: "nowrap",
+                }}>
+                  {opt.label}
+                </span>
                 {selected && (
                   <svg
-                    width="16"
-                    height="16"
+                    width="14"
+                    height="14"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2.5"
+                    strokeWidth="3"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    style={{ marginLeft: "auto" }}
+                    style={{ color: `rgba(${opt.glowColor}, 1)`, marginTop: 2 }}
                   >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
