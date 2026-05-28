@@ -50,17 +50,30 @@ export type MockWorkout = {
   cover_gradient?: string;
 };
 
+export type GroupMember = {
+  user_id: string;
+  joined_at: string;
+  profile: {
+    username: string;
+    full_name: string;
+    avatar_url: string | null;
+  };
+};
+
 export type MockGroup = {
   id: string;
   name: string;
-  description: string;
+  description: string; // web-leads: iOS will add, see docs/ios-needs-to-add.md
   avatar_url: string | null;
-  cover_photo_url: string | null;
-  cover_gradient: string;
+  cover_photo_url: string | null; // web-leads: iOS will add, see docs/ios-needs-to-add.md
+  cover_gradient: string; // web-only cosmetic
   member_count: number;
-  members: MockUser[];
-  upcoming_workouts: MockWorkout[];
+  members: GroupMember[];
+  upcoming_workouts: MockWorkout[]; // TODO: iOS fetches separately by group_id; web embeds for mock convenience
   creator_id: string;
+  conversation_id: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 // Matches iOS NotificationCategory (NotificationManager.swift:13)
@@ -239,6 +252,21 @@ export const MOCK_FRIENDS: MockUser[] = [
 const [luke, finn, michael, kyrah, danny, brandon, jb, kiera, tye, charles] =
   MOCK_FRIENDS;
 
+// Helper: build a GroupMember from a MockUser
+function gm(user: MockUser, daysAgo = 30): GroupMember {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return {
+    user_id: user.id,
+    joined_at: d.toISOString(),
+    profile: {
+      username: user.username,
+      full_name: user.full_name,
+      avatar_url: user.avatar_url,
+    },
+  };
+}
+
 // ----------------------------------------------------------------
 // Groups
 // ----------------------------------------------------------------
@@ -254,9 +282,12 @@ export const MOCK_GROUPS: MockGroup[] = [
     cover_photo_url: "https://images.unsplash.com/photo-1534787238916-9ba6764efd4f?w=600&h=400&fit=crop",
     cover_gradient: "linear-gradient(135deg, #2AD472 0%, #1a9e54 30%, #0C5DE9 70%, #093fb0 100%)",
     member_count: 14,
-    members: [CURRENT_USER, luke, finn, kyrah, danny, brandon, kiera, tye],
+    members: [gm(CURRENT_USER, 60), gm(luke, 90), gm(finn, 55), gm(kyrah, 40), gm(danny, 35), gm(brandon, 30), gm(kiera, 20), gm(tye, 10)],
     upcoming_workouts: [], // filled below
     creator_id: luke.id,
+    conversation_id: "conv-g-cycle",
+    created_at: "2024-06-01T00:00:00Z",
+    updated_at: "2026-05-20T00:00:00Z",
   },
   {
     id: "g-sunday",
@@ -267,9 +298,12 @@ export const MOCK_GROUPS: MockGroup[] = [
     cover_photo_url: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=600&h=400&fit=crop",
     cover_gradient: "linear-gradient(135deg, #0C5DE9 0%, #3A7EF2 30%, #9A5AF0 70%, #6b3dbd 100%)",
     member_count: 9,
-    members: [CURRENT_USER, michael, danny, jb, charles, brandon],
+    members: [gm(CURRENT_USER, 50), gm(michael, 80), gm(danny, 45), gm(jb, 40), gm(charles, 30), gm(brandon, 25)],
     upcoming_workouts: [],
     creator_id: michael.id,
+    conversation_id: "conv-g-sunday",
+    created_at: "2024-07-15T00:00:00Z",
+    updated_at: "2026-05-18T00:00:00Z",
   },
   {
     id: "g-climb",
@@ -280,9 +314,12 @@ export const MOCK_GROUPS: MockGroup[] = [
     cover_photo_url: "https://images.unsplash.com/photo-1522163182402-834f871fd851?w=600&h=400&fit=crop",
     cover_gradient: "linear-gradient(135deg, #9A5AF0 0%, #7a3dd4 30%, #2AD472 70%, #1a9e54 100%)",
     member_count: 7,
-    members: [CURRENT_USER, finn, kyrah, tye, kiera],
+    members: [gm(CURRENT_USER, 40), gm(finn, 60), gm(kyrah, 35), gm(tye, 25), gm(kiera, 15)],
     upcoming_workouts: [],
     creator_id: finn.id,
+    conversation_id: "conv-g-climb",
+    created_at: "2024-09-01T00:00:00Z",
+    updated_at: "2026-05-22T00:00:00Z",
   },
 ];
 
@@ -987,6 +1024,26 @@ export function getWorkoutById(id: string): MockWorkout | undefined {
   return MOCK_WORKOUTS.find((w) => w.id === id);
 }
 
+// TODO: replace with get_group RPC when backend ready
+export function getGroupById(id: string): MockGroup | undefined {
+  return MOCK_GROUPS.find((g) => g.id === id);
+}
+
+// Resolve a GroupMember to a full MockUser for avatar/name display
+export function resolveGroupMember(m: GroupMember): MockUser {
+  const found = getAllKnownUsers().find((u) => u.id === m.user_id);
+  if (found) return found;
+  const initial = m.profile.full_name.charAt(0).toUpperCase();
+  return {
+    id: m.user_id,
+    full_name: m.profile.full_name,
+    username: m.profile.username,
+    avatar_url: m.profile.avatar_url,
+    initials: initial,
+    gradient_seed: initial,
+  };
+}
+
 // Get the display name for a workout's category (maps key to ACTIVITIES list)
 export function categoryDisplayName(key: string): string {
   const activity = ACTIVITIES.find((a) => a.key === key);
@@ -1015,7 +1072,17 @@ export function getAllKnownUsers(): MockUser[] {
     add(getWorkoutHost(w));
   });
   MOCK_GROUPS.forEach((g) => {
-    g.members.forEach(add);
+    g.members.forEach((m) => {
+      const initial = m.profile.full_name.charAt(0).toUpperCase();
+      add({
+        id: m.user_id,
+        full_name: m.profile.full_name,
+        username: m.profile.username,
+        avatar_url: m.profile.avatar_url,
+        initials: initial,
+        gradient_seed: initial,
+      });
+    });
   });
   MOCK_CONVERSATIONS.forEach((c) => {
     c.participants.forEach(add);

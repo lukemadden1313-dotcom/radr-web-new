@@ -2,7 +2,7 @@
 
 **Project:** radr-web-new (web companion to Radr iOS at getradr.app)
 **Web branch:** eli
-**Last updated:** 2026-05-27
+**Last updated:** 2026-05-28
 
 This is the single source of truth for everything Luke needs to wire the web app to Supabase. Web is built with mock data + iOS-aligned reference docs. Luke connects it to real backend.
 
@@ -90,6 +90,7 @@ Each migration: Luke creates Supabase table seeded from the canonical doc, build
 | `/dashboard` | Logged-in home | Built | `get_dashboard_data` (workouts + groups + friends + stats) |
 | `/workouts/[id]` | Workout detail | Built | `get_workout(id)`, `get_workout_activity(workout_id)` |
 | `/groups/[id]` | Group detail | Built | Expanded `get_group_for_deep_link` (see Open Backlog #2) |
+| `/groups/[id]/members` | Full member list for a crew | Built | Same group RPC — members array |
 | `/profile/[username]` | Profile (self + other) | Built | `get_profile_by_username`, `get_mutual_friends`, `get_shared_workouts`, `get_workouts_hosted_by_user`, `get_workouts_user_could_join` |
 | `/profile/edit` | Edit profile (4 fields) | Built | `updateProfile(username, full_name, bio, avatar_url)` |
 | `/notifications` | Activity feed | Built | `get_notifications`, `mark_notification_read`, `mark_all_notifications_read` |
@@ -266,7 +267,7 @@ Additionally, `src/components/layout/avatar-menu.tsx` hardcodes avatar initial "
 | Share (group) | `/groups/[id]` | Nothing (TODO at line 352) | Web Share API / copy link | |
 | Notifications toggle (group) | `/groups/[id]` | Nothing (TODO at line 360) | `toggle_group_notifications(group_id)` | |
 | More menu (group) | `/groups/[id]` | Nothing (TODO at line 367) | `report_group`, `leave_group` | |
-| Create group | `/groups` | Links to `/create` (TODO at lines 112, 196) | `create_group(input)` or separate `/groups/create` flow | |
+| Create group | `/groups` | App-only — links to App Store (crew creation deferred to iOS) | `create_group(input)` lives in iOS only for now | |
 | Filter groups | `/groups` | Nothing (TODO at line 148) | Client-side state | |
 | Accept friend request | `/notifications` | Nothing (TODO at line 254) | `accept_friend_request(request_id)` | |
 | Decline friend request | `/notifications` | Nothing (TODO at line 261) | `decline_friend_request(request_id)` | |
@@ -345,7 +346,7 @@ Canonical docs in `docs/ios-canonical/`:
 
 **Contract fixes still needed (documented, not yet applied):**
 
-- `MockGroup`: remove `description` (invented), `cover_photo_url` (invented). Members shape wrong (`MockUser[]` should be lean `{user_id, joined_at, profile}`). `upcoming_workouts[]` should not be embedded — fetch separately. Add `conversation_id`. See `groups.md` divergence table.
+- `MockGroup`: ALIGNED (2026-05-28). Members shape changed from `MockUser[]` to lean `GroupMember[]` (`{user_id, joined_at, profile: {username, full_name, avatar_url}}`). Added `conversation_id`, `created_at`, `updated_at`. KEPT `description` + `cover_photo_url` as web-leads features (iOS will add — see `docs/ios-needs-to-add.md`). Helper `resolveGroupMember()` converts lean shape → full MockUser for avatar rendering. `upcoming_workouts[]` still embedded for now (TODO: fetch separately when backend ready).
 - `MockUser`: ALIGNED (2026-05-28). Renamed `parties_attended` → `total_workouts`, `joined_at` → `created_at`. Added `current_streak`. KEPT `hosted_count` + `birthday_month` as web-leads features (iOS will add — see `docs/ios-needs-to-add.md`).
 - `/profile/edit` page built: 4 editable fields (avatar, name, username, bio) matching iOS EditProfileView. Optimistic save; TODO: wire `updateProfile(username, full_name, bio, avatar_url)` RPC.
 
@@ -368,7 +369,8 @@ Canonical docs in `docs/ios-canonical/`:
 | `/schedule` | Built | Server | Yes — MOCK_WORKOUTS, MOCK_NOTIFICATIONS, CURRENT_USER | Renders with mock data |
 | `/workouts/[id]` | Built | Server | Yes — MOCK_WORKOUTS, MOCK_GROUPS, CURRENT_USER | Renders with mock data, actions are no-ops |
 | `/groups` | Built | Server | Yes — MOCK_GROUPS | Renders with mock data |
-| `/groups/[id]` | Built | Server | Yes — MOCK_GROUPS, MOCK_FRIENDS, CURRENT_USER | Renders with mock data, actions are no-ops |
+| `/groups/[id]` | Built | Server + Client | Yes — MOCK_GROUPS, MOCK_FRIENDS, CURRENT_USER | Renders with mock data, optimistic comments |
+| `/groups/[id]/members` | Built | Server | Yes — MOCK_GROUPS | Full member list with creator badge |
 | `/profile/[username]` | Built | Server | Yes — getUserByUsername, getMutualFriends, getSharedWorkouts, etc. | Renders with mock data |
 | `/notifications` | Built | Server | Yes — MOCK_NOTIFICATIONS | Renders with mock data, actions are no-ops |
 | `/settings` | Built | Server | Yes — CURRENT_USER | Renders with mock data, toggles/links are no-ops |

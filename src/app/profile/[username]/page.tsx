@@ -224,6 +224,13 @@ export default async function ProfilePage({ params }: Props) {
             </p>
           )}
 
+          {/* Bio */}
+          {user.bio && (
+            <p className="mt-3 text-base text-radr-text-muted leading-relaxed whitespace-pre-line max-w-md">
+              {user.bio}
+            </p>
+          )}
+
           {/* Other: mutual friends */}
           {!isSelf && mutualFriends.length > 0 && (
             <div className="mt-3 flex flex-col items-center gap-2">

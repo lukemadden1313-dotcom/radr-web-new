@@ -6,12 +6,20 @@ import BrandDot from "@/components/brand-dot";
 import { WorkoutListRow } from "@/components/workout-list-row";
 import {
   CURRENT_USER,
-  MOCK_GROUPS,
   MOCK_FRIENDS,
+  getGroupById,
   getWorkoutHost,
+  resolveGroupMember,
+  getAllKnownUsers,
   type MockUser,
   type MockGroup,
+  type GroupMember,
 } from "@/lib/mock-data";
+import {
+  GroupActivityInteractive,
+  type SerializableUser,
+  type FeedItem,
+} from "./group-activity-interactive";
 
 // ----------------------------------------------------------------
 // Helpers
@@ -32,12 +40,11 @@ function avatarGradient(seed: string): string {
 }
 
 function resolveUser(userId: string): MockUser | null {
-  if (userId === CURRENT_USER.id) return CURRENT_USER;
-  return MOCK_FRIENDS.find((f) => f.id === userId) ?? null;
+  return getAllKnownUsers().find((u) => u.id === userId) ?? null;
 }
 
 function isCurrentUserMember(group: MockGroup): boolean {
-  return group.members.some((m) => m.id === CURRENT_USER.id);
+  return group.members.some((m) => m.user_id === CURRENT_USER.id);
 }
 
 // ----------------------------------------------------------------
@@ -45,22 +52,26 @@ function isCurrentUserMember(group: MockGroup): boolean {
 // TODO: pull from real group activity feed RPC
 // ----------------------------------------------------------------
 
-type ActivityItem = {
-  id: string;
-  actor: MockUser;
-  action: string;
-  timeAgo: string;
-};
+function toSerializable(u: MockUser): SerializableUser {
+  return {
+    id: u.id,
+    full_name: u.full_name,
+    username: u.username,
+    avatar_url: u.avatar_url,
+    initials: u.initials,
+    gradient_seed: u.gradient_seed,
+  };
+}
 
-function buildMockGroupActivity(group: MockGroup): ActivityItem[] {
-  const items: ActivityItem[] = [];
+function buildMockGroupActivity(group: MockGroup): FeedItem[] {
+  const items: FeedItem[] = [];
 
   // Most recent: a member joined
   if (group.members.length > 2) {
-    const recentMember = group.members[group.members.length - 1];
+    const recentMember = resolveGroupMember(group.members[group.members.length - 1]);
     items.push({
       id: "ga-joined",
-      actor: recentMember,
+      actor: toSerializable(recentMember),
       action: "joined the crew",
       timeAgo: "2d",
     });
@@ -71,7 +82,7 @@ function buildMockGroupActivity(group: MockGroup): ActivityItem[] {
     const w = group.upcoming_workouts[0];
     items.push({
       id: "ga-created-workout",
-      actor: getWorkoutHost(w),
+      actor: toSerializable(getWorkoutHost(w)),
       action: `created ${w.title}`,
       timeAgo: "4d",
     });
@@ -82,7 +93,7 @@ function buildMockGroupActivity(group: MockGroup): ActivityItem[] {
   if (creator) {
     items.push({
       id: "ga-created-group",
-      actor: creator,
+      actor: toSerializable(creator),
       action: "started the crew",
       timeAgo: "1w",
     });
@@ -91,12 +102,12 @@ function buildMockGroupActivity(group: MockGroup): ActivityItem[] {
   // If a second member exists, show an "added" event
   if (group.members.length > 1) {
     const adder = resolveUser(group.creator_id);
-    const added = group.members[1];
-    if (adder && added.id !== adder.id) {
+    const addedMember = resolveGroupMember(group.members[1]);
+    if (adder && addedMember.id !== adder.id) {
       items.push({
         id: "ga-added",
-        actor: adder,
-        action: `added ${added.full_name.split(" ")[0]} to the crew`,
+        actor: toSerializable(adder),
+        action: `added ${addedMember.full_name.split(" ")[0]} to the crew`,
         timeAgo: "1w",
       });
     }
@@ -192,7 +203,7 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function GroupDetailPage({ params }: Props) {
   const { id } = await params;
-  const group = MOCK_GROUPS.find((g) => g.id === id);
+  const group = getGroupById(id); // TODO: replace with get_group RPC when backend ready
   if (!group) notFound();
 
   const isMember = isCurrentUserMember(group);
@@ -471,85 +482,43 @@ export default async function GroupDetailPage({ params }: Props) {
           </p>
 
           <div className="flex flex-wrap gap-4">
-            {group.members.map((m) => (
-              <Link
-                key={m.id}
-                href={`/profile/${m.username}`}
-                className="flex flex-col items-center gap-1.5 no-underline text-inherit"
-                style={{ width: 72 }}
-              >
-                <UserAvatar user={m} size={44} />
-                <span className="text-xs text-radr-text-muted text-center leading-tight truncate w-full">
-                  {m.full_name.split(" ")[0]}
-                </span>
-              </Link>
-            ))}
+            {group.members.map((m) => {
+              const user = resolveGroupMember(m);
+              return (
+                <Link
+                  key={m.user_id}
+                  href={`/profile/${user.username}`}
+                  className="flex flex-col items-center gap-1.5 no-underline text-inherit"
+                  style={{ width: 72 }}
+                >
+                  <UserAvatar user={user} size={44} />
+                  <span className="text-xs text-radr-text-muted text-center leading-tight truncate w-full">
+                    {user.full_name.split(" ")[0]}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
 
-          {group.member_count > group.members.length && (
-            <Link
-              href={`/groups/${group.id}/members`}
-              className="block text-sm font-medium mt-4 no-underline transition-colors"
-              style={{ color: "var(--radr-green)" }}
-            >
-              View all members &rarr;
-            </Link>
-          )}
+          <Link
+            href={`/groups/${group.id}/members`}
+            className="block text-sm font-medium mt-4 no-underline transition-colors"
+            style={{ color: "var(--radr-green)" }}
+          >
+            View all {group.member_count} members &rarr;
+          </Link>
         </div>
 
         {/* ============================================================
-            8. ACTIVITY
+            8. ACTIVITY (interactive — optimistic comments)
             ============================================================ */}
         <div className="px-6 mt-10">
           <SectionHeader title="Activity" />
-
-          <div className="flex flex-col">
-            {activityItems.map((item, i) => (
-              <div
-                key={item.id}
-                className="flex items-start gap-3 py-3"
-                style={i > 0 ? { borderTop: "1px solid rgba(255,255,247,0.08)" } : undefined}
-              >
-                <Link href={`/profile/${item.actor.username}`} className="no-underline shrink-0">
-                  <UserAvatar user={item.actor} size={32} className="mt-0.5" />
-                </Link>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm">
-                    <Link href={`/profile/${item.actor.username}`} className="no-underline font-medium text-radr-text hover:underline">{item.actor.full_name.split(" ")[0]}</Link>
-                    {" "}
-                    <span className="text-radr-text-muted">{item.action}</span>
-                  </p>
-                  <p className="text-xs text-radr-text-dim mt-0.5">
-                    {item.timeAgo}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Comment input */}
-          <div className="flex items-center gap-3 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,247,0.08)" }}>
-            <UserAvatar user={CURRENT_USER} size={32} />
-            <div
-              className="flex-1 flex items-center rounded-full border border-radr-border px-4"
-              style={{ height: 40, background: "rgba(255,255,247,0.04)" }}
-            >
-              {/* TODO: wire group comment submit */}
-              <input
-                type="text"
-                placeholder="Add a comment..."
-                className="flex-1 bg-transparent text-sm text-radr-text placeholder-radr-text-dim outline-none border-none"
-                readOnly
-              />
-              <button
-                className="text-sm font-semibold ml-2 cursor-pointer"
-                style={{ color: "var(--radr-green)", background: "transparent", border: "none" }}
-                disabled
-              >
-                Post
-              </button>
-            </div>
-          </div>
+          <GroupActivityInteractive
+            initialFeed={activityItems}
+            currentUser={toSerializable(CURRENT_USER)}
+            groupId={group.id}
+          />
         </div>
 
         {/* ============================================================

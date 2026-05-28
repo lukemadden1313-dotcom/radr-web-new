@@ -109,14 +109,16 @@ export default function GroupsPage() {
             <span className="text-sm font-medium">Back</span>
           </Link>
 
-          {/* TODO: wire to create group flow (currently routes to general /create) */}
-          <Link
-            href="/create"
+          {/* Crew creation is app-only — prompt user to open Radr */}
+          <a
+            href="https://apps.apple.com/us/app/radr-calendar/id6758311100"
+            target="_blank"
+            rel="noopener noreferrer"
             className="py-1.5 px-3.5 rounded-full text-sm font-semibold text-white no-underline"
             style={{ background: "var(--radr-green)" }}
           >
-            + Create
-          </Link>
+            + Create in App
+          </a>
         </div>
 
         {/* ============================================================
@@ -193,14 +195,16 @@ export default function GroupsPage() {
             <p className="text-base text-radr-text-dim italic">
               No crews yet. Start one with your people.
             </p>
-            {/* TODO: wire to create group flow (currently routes to general /create) */}
-            <Link
-              href="/create"
+            {/* Crew creation is app-only — prompt user to open Radr */}
+            <a
+              href="https://apps.apple.com/us/app/radr-calendar/id6758311100"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-block mt-5 py-2.5 px-5 rounded-full text-sm font-semibold text-white no-underline"
               style={{ background: "var(--radr-green)" }}
             >
-              + Create your first crew
-            </Link>
+              + Create your first crew in the app
+            </a>
           </div>
         )}
       </div>
