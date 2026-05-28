@@ -328,12 +328,17 @@ Canonical docs in `docs/ios-canonical/`:
 | `activities.md` | 82 workout activities, keys, displayNames, emoji icons, favorites, "Something else" | Complete |
 | `messages.md` | Message types, WORKOUT_CARD encoding, jumbomoji, reactions, conversation model | Complete |
 | `friends.md` | Friend states, FriendshipDTO model, request flow, UI audit | Complete |
+| `workouts.md` | WorkoutDTO fields, ParticipantProfile shape, CreateWorkoutDTO, MockWorkout divergence table | Complete |
+| `notifications.md` | NotificationCategory enum (13 types), AppNotification struct, MockNotification divergence table | Complete |
 
-**Mock types WITHOUT a canonical iOS doc (need future audits before Luke trusts the shape):**
+**Contract fixes needed on web (before wiring to real data):**
 
-- `MockWorkout` — no `workouts.md` audit yet. Fields like `cover_gradient`, `open_to_join`, `cohosts` may not match iOS schema.
+- **MockWorkout:** `host` must flatten to `creator_id + creator_username + creator_full_name + creator_avatar_url` (iOS doesn't embed a User object). `cohosts` doesn't exist on iOS — remove. `participants` shape differs (iOS: `{user_id, status, profile: {username, avatar_url}}`). `location` and `description` should be optional. Add `duration`. See `docs/ios-canonical/workouts.md` divergence table.
+- **MockNotification:** CRITICAL — 3 of 6 web type names don't exist in iOS (`rsvp_yes`, `rsvp_maybe`, `group_invite`). 8 iOS types missing from web. Model structure fundamentally different: iOS uses flat rows with pre-rendered `message` string + UUID references, not embedded objects. See `docs/ios-canonical/notifications.md` divergence table.
+
+**Mock types still WITHOUT a canonical iOS doc:**
+
 - `MockGroup` — no `groups.md` audit yet. `cover_gradient`, `upcoming_workouts[]` embedded shape needs verification.
-- `MockNotification` — no `notifications.md` audit yet. Type names (`rsvp_yes`, `rsvp_maybe`, etc.) were invented for web — must verify against iOS `NotificationType` enum.
 - `MockRecommendation` — no spec. Recommendation engine logic is iOS-only for now.
 - `MockConversation` — partially covered in `messages.md` but web shape (is_pinned, is_muted, unread_count) needs verification.
 - Profile fields — no `profiles.md` audit. `MockUser` has `parties_attended`, `hosted_count`, `birthday_month`, `joined_at`, `bio` — verify which exist on iOS `profiles` table.
