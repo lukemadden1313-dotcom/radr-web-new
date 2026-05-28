@@ -8,6 +8,7 @@ import {
   CURRENT_USER,
   MOCK_GROUPS,
   MOCK_FRIENDS,
+  getWorkoutHost,
   type MockUser,
   type MockGroup,
 } from "@/lib/mock-data";
@@ -70,7 +71,7 @@ function buildMockGroupActivity(group: MockGroup): ActivityItem[] {
     const w = group.upcoming_workouts[0];
     items.push({
       id: "ga-created-workout",
-      actor: w.host,
+      actor: getWorkoutHost(w),
       action: `created ${w.title}`,
       timeAgo: "4d",
     });

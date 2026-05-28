@@ -144,7 +144,7 @@ export default async function ProfilePage({ params }: Props) {
     ? MOCK_WORKOUTS.filter(
         (w) =>
           new Date(w.start_time) >= new Date() &&
-          w.participants.some((p) => p.id === CURRENT_USER.id),
+          w.participants.some((p) => p.user_id === CURRENT_USER.id),
       ).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
     : [];
 

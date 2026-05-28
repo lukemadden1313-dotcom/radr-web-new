@@ -31,7 +31,7 @@ export function WorkoutListRow({
       {/* Colored left-edge strip */}
       <div
         className="w-2 shrink-0"
-        style={{ background: stripColor || workout.cover_gradient }}
+        style={{ background: stripColor || workout.cover_gradient || "var(--radr-cobalt)" }}
       />
 
       {/* Content */}
@@ -41,7 +41,7 @@ export function WorkoutListRow({
             {workout.title}
           </p>
           <p className="text-sm text-radr-text-muted mt-0.5">
-            {formatShortDate(workout.start_time, hideWeekday)} &middot; {workout.location.split(",")[0]}
+            {formatShortDate(workout.start_time, hideWeekday)}{workout.location ? <> &middot; {workout.location.split(",")[0]}</> : null}
           </p>
           {reason && (
             <p className="text-xs text-radr-text-dim mt-1.5">

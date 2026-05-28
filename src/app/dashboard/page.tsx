@@ -14,6 +14,8 @@ import {
   FRIEND_REQUESTS_COUNT,
   DISCOVERABLE_FRIENDS,
   coverPhotoForActivity,
+  categoryDisplayName,
+  getWorkoutHost,
   type MockUser,
   type MockWorkout,
   type MockGroup,
@@ -54,11 +56,11 @@ function isUpcoming(w: MockWorkout): boolean {
 }
 
 function userIsParticipant(w: MockWorkout): boolean {
-  return w.participants.some((p) => p.id === CURRENT_USER.id);
+  return w.participants.some((p) => p.user_id === CURRENT_USER.id);
 }
 
 function isUserGoing(workout: MockWorkout, user: MockUser): boolean {
-  return workout.participants.some((p) => p.id === user.id);
+  return workout.participants.some((p) => p.user_id === user.id);
 }
 
 // ----------------------------------------------------------------
@@ -165,8 +167,8 @@ function SectionHeader({
 function WorkoutCard({ workout }: { workout: MockWorkout }) {
   const going = isUserGoing(workout, CURRENT_USER);
   const dateLabel = formatDateChip(workout.start_time);
-  const hostFirstName = workout.host.full_name.split(" ")[0];
-  const coverUrl = workout.cover_image_url || coverPhotoForActivity(workout.activity_type);
+  const hostFirstName = workout.creator_full_name.split(" ")[0];
+  const coverUrl = workout.cover_image_url || coverPhotoForActivity(workout.category);
 
   return (
     <a
@@ -190,7 +192,7 @@ function WorkoutCard({ workout }: { workout: MockWorkout }) {
           height: 195,
           width: "100%",
           overflow: "hidden",
-          background: workout.cover_gradient,
+          background: workout.cover_gradient || "var(--radr-cobalt)",
         }}
       >
         <img
@@ -251,7 +253,7 @@ function WorkoutCard({ workout }: { workout: MockWorkout }) {
           }}
         >
           <span style={{ color: "#ffffff", fontSize: 11, fontWeight: 600, lineHeight: 1, letterSpacing: "0.04em", textTransform: "uppercase" as const }}>
-            {workout.activity_type}
+            {categoryDisplayName(workout.category)}
           </span>
         </div>
 
@@ -296,7 +298,7 @@ function WorkoutCard({ workout }: { workout: MockWorkout }) {
           {workout.title}
         </h3>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <UserAvatar user={workout.host} size={20} className="shrink-0" />
+          <UserAvatar user={getWorkoutHost(workout)} size={20} className="shrink-0" />
           <span style={{ color: "rgba(255,255,247,0.60)", fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             Hosted by {hostFirstName}
           </span>
@@ -421,7 +423,7 @@ export default function DashboardPage() {
   const upcomingCount = upcomingWorkouts.length;
   const invitesCount = MOCK_INVITES.length;
   const yoursCount = MOCK_WORKOUTS.filter(
-    (w) => isUpcoming(w) && w.host.id === CURRENT_USER.id,
+    (w) => isUpcoming(w) && w.creator_id === CURRENT_USER.id,
   ).length;
 
   const firstName = CURRENT_USER.full_name.split(" ")[0];

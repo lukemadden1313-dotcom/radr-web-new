@@ -17,22 +17,36 @@ export type MockUser = {
   hosted_count?: number;
 };
 
+export type RSVPStatus = "going" | "maybe" | "cant";
+
+export type WorkoutParticipant = {
+  user_id: string;
+  status: RSVPStatus;
+  profile: {
+    username: string;
+    avatar_url: string | null;
+  };
+};
+
 export type MockWorkout = {
   id: string;
+  creator_id: string;
+  creator_username: string;
+  creator_full_name: string;
+  creator_avatar_url: string | null;
   title: string;
+  category: string;
   start_time: string;
-  location: string;
-  host: MockUser;
-  cohosts: MockUser[];
-  participants: MockUser[];
-  participant_cap: number | null;
-  description: string;
-  cover_image_url: string | null;
-  cover_gradient: string;
-  group_id: string | null;
+  duration: number;
+  location: string | null;
+  description: string | null;
   open_to_join: boolean;
   booking_url: string | null;
-  activity_type: string;
+  group_id: string | null;
+  participants: WorkoutParticipant[];
+  // Web-only display fields (not from backend)
+  cover_image_url?: string;
+  cover_gradient?: string;
 };
 
 export type MockGroup = {
@@ -48,20 +62,33 @@ export type MockGroup = {
   creator_id: string;
 };
 
+// Matches iOS NotificationCategory (NotificationManager.swift:13)
+export type NotificationType =
+  | "friend_request"
+  | "friend_request_accepted"
+  | "upcoming_activity"
+  | "workout_update"
+  | "workout_invite"
+  | "friend_workout"
+  | "workout_join"
+  | "workout_reaction"
+  | "workout_comment"
+  | "new_message"
+  | "calendar_error"
+  | "profile_view"
+  | "general";
+
+// Flat notification model matching iOS AppNotification (NotificationManager.swift:86).
+// `message` is pre-rendered — display it directly. Use `type` only for icon/color/routing.
 export type MockNotification = {
   id: string;
-  type:
-    | "rsvp_yes"
-    | "rsvp_maybe"
-    | "friend_request"
-    | "workout_invite"
-    | "group_invite"
-    | "workout_reminder";
-  actor: MockUser;
-  target_workout?: MockWorkout;
-  target_group?: MockGroup;
+  type: NotificationType;
+  message: string;
+  actor_id: string | null;
+  entity_id: string | null;   // canonical target (workout ID, profile ID)
+  related_id: string | null;  // context-dependent (conversation ID, etc.)
+  is_read: boolean;
   created_at: string;
-  unread: boolean;
 };
 
 export type MockRecommendation = {
@@ -260,6 +287,15 @@ const [cycleCrew, sundayRunners, climbCrew] = MOCK_GROUPS;
 // Workouts
 // ----------------------------------------------------------------
 
+// Helper: build a WorkoutParticipant from a MockUser
+function wp(user: MockUser, status: RSVPStatus = "going"): WorkoutParticipant {
+  return {
+    user_id: user.id,
+    status,
+    profile: { username: user.username, avatar_url: user.avatar_url },
+  };
+}
+
 // TODO: replace with get_workout_for_deep_link or feed RPC
 export const MOCK_WORKOUTS: MockWorkout[] = [
   {
@@ -267,103 +303,109 @@ export const MOCK_WORKOUTS: MockWorkout[] = [
     title: "Good Saturdays is back!!",
     start_time: daysFromNow(5, 9, 0),
     location: "Barry's Bootcamp, Chelsea",
-    host: luke,
-    cohosts: [CURRENT_USER],
-    participants: [CURRENT_USER, luke, finn, kyrah, danny, brandon, kiera],
-    participant_cap: 20,
+    creator_id: luke.id,
+    creator_username: luke.username,
+    creator_full_name: luke.full_name,
+    creator_avatar_url: luke.avatar_url,
+    participants: [wp(CURRENT_USER), wp(luke), wp(finn), wp(kyrah), wp(danny), wp(brandon), wp(kiera)],
     description:
       "The legendary Saturday morning bootcamp returns. Bring energy, bring a friend, bring a towel. We go hard then we brunch.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #0C5DE9 0%, #3A7EF2 30%, #5b9cf5 60%, #0A4FC5 100%)",
     group_id: null,
     open_to_join: true,
     booking_url: null,
-    activity_type: "HIIT",
+    category: "hiit",
+    duration: 60,
   },
   {
     id: "w-central-park",
     title: "Central Park 6-miler",
     start_time: daysFromNow(1, 7, 0),
     location: "Engineers' Gate, East 90th St & 5th Ave",
-    host: michael,
-    cohosts: [],
-    participants: [CURRENT_USER, michael, danny, jb, charles],
-    participant_cap: null,
+    creator_id: michael.id,
+    creator_username: michael.username,
+    creator_full_name: michael.full_name,
+    creator_avatar_url: michael.avatar_url,
+    participants: [wp(CURRENT_USER), wp(michael), wp(danny), wp(jb), wp(charles)],
     description: "Easy Sunday pace. Full lower loop. Meet at Engineers' Gate, we roll out at 7:05 sharp.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #2AD472 0%, #1fc262 30%, #0C5DE9 70%, #093fb0 100%)",
     group_id: sundayRunners.id,
     open_to_join: true,
     booking_url: null,
-    activity_type: "Running",
+    category: "outdoorRun",
+    duration: 55,
   },
   {
     id: "w-bouldering",
     title: "VITAL bouldering sesh",
     start_time: daysFromNow(2, 18, 30),
     location: "VITAL Climbing Gym, Williamsburg",
-    host: finn,
-    cohosts: [],
-    participants: [finn, kyrah, tye],
-    participant_cap: 8,
+    creator_id: finn.id,
+    creator_username: finn.username,
+    creator_full_name: finn.full_name,
+    creator_avatar_url: finn.avatar_url,
+    participants: [wp(finn), wp(kyrah), wp(tye)],
     description: "Working V5-V7 problems this week. Bring shoes or rent at the desk. Cool-down beers at the bar after.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #9A5AF0 0%, #7a3dd4 30%, #5b3d8f 60%, #3d2860 100%)",
     group_id: climbCrew.id,
     open_to_join: true,
     booking_url: null,
-    activity_type: "Climbing",
+    category: "climbing",
+    duration: 90,
   },
   {
     id: "w-peloton",
     title: "6 AM Peloton ride",
     start_time: daysFromNow(3, 6, 0),
     location: "Peloton Studios, Hudson Yards",
-    host: kiera,
-    cohosts: [luke],
-    participants: [kiera, luke, brandon, tye, CURRENT_USER],
-    participant_cap: 30,
+    creator_id: kiera.id,
+    creator_username: kiera.username,
+    creator_full_name: kiera.full_name,
+    creator_avatar_url: kiera.avatar_url,
+    participants: [wp(kiera), wp(luke), wp(brandon), wp(tye), wp(CURRENT_USER)],
     description: "Cody Rigsby live class. Get there 15 min early to clip in. Energy matching required.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #2AD472 0%, #22b85f 30%, #4a8f6f 60%, #1a6b4a 100%)",
     group_id: cycleCrew.id,
     open_to_join: true,
     booking_url: "https://www.onepeloton.com/schedule/cycling",
-    activity_type: "Cycling",
+    category: "indoorCycle",
+    duration: 45,
   },
   {
     id: "w-yoga",
     title: "Vinyasa flow @ Sky Ting",
     start_time: daysFromNow(4, 12, 0),
     location: "Sky Ting Yoga, Tribeca",
-    host: kyrah,
-    cohosts: [],
-    participants: [kyrah, kiera, CURRENT_USER],
-    participant_cap: 15,
+    creator_id: kyrah.id,
+    creator_username: kyrah.username,
+    creator_full_name: kyrah.full_name,
+    creator_avatar_url: kyrah.avatar_url,
+    participants: [wp(kyrah), wp(kiera), wp(CURRENT_USER)],
     description: "Noon flow with Krissy. Bring your own mat or borrow one. Restorative vibes.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #9A5AF0 0%, #b07af5 30%, #c39cff 60%, #7a3dd4 100%)",
     group_id: null,
     open_to_join: true,
     booking_url: null,
-    activity_type: "Yoga",
+    category: "yoga",
+    duration: 60,
   },
   {
     id: "w-past-lift",
     title: "Upper body push day",
     start_time: daysAgo(2, 17, 0),
     location: "Equinox, Flatiron",
-    host: danny,
-    cohosts: [],
-    participants: [danny, brandon, CURRENT_USER],
-    participant_cap: null,
+    creator_id: danny.id,
+    creator_username: danny.username,
+    creator_full_name: danny.full_name,
+    creator_avatar_url: danny.avatar_url,
+    participants: [wp(danny), wp(brandon), wp(CURRENT_USER)],
     description: "Bench, OHP, dips, and cable flys. 75-minute session. Bring your lifting shoes.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #0C5DE9 0%, #0A4FC5 30%, #083da0 60%, #062d7a 100%)",
     group_id: null,
     open_to_join: false,
     booking_url: null,
-    activity_type: "Strength",
+    category: "traditionalStrength",
+    duration: 75,
   },
   // --- Additional workouts for schedule density ---
   {
@@ -371,68 +413,72 @@ export const MOCK_WORKOUTS: MockWorkout[] = [
     title: "Morning shake-out run",
     start_time: daysFromNow(0, 7, 30),
     location: "Hudson River Greenway, Chelsea Piers",
-    host: CURRENT_USER,
-    cohosts: [],
-    participants: [CURRENT_USER, luke, danny],
-    participant_cap: null,
+    creator_id: CURRENT_USER.id,
+    creator_username: CURRENT_USER.username,
+    creator_full_name: CURRENT_USER.full_name,
+    creator_avatar_url: CURRENT_USER.avatar_url,
+    participants: [wp(CURRENT_USER), wp(luke), wp(danny)],
     description: "Easy 3-miler along the river. All paces welcome.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #2AD472 0%, #1fc262 50%, #0C5DE9 100%)",
     group_id: null,
     open_to_join: true,
     booking_url: null,
-    activity_type: "Running",
+    category: "outdoorRun",
+    duration: 30,
   },
   {
     id: "w-today-evening",
     title: "Barry's Arms & Abs",
     start_time: daysFromNow(0, 18, 0),
     location: "Barry's Bootcamp, Noho",
-    host: kiera,
-    cohosts: [],
-    participants: [kiera, kyrah, CURRENT_USER, brandon],
-    participant_cap: 25,
+    creator_id: kiera.id,
+    creator_username: kiera.username,
+    creator_full_name: kiera.full_name,
+    creator_avatar_url: kiera.avatar_url,
+    participants: [wp(kiera), wp(kyrah), wp(CURRENT_USER), wp(brandon)],
     description: "50-minute arms and abs class. Bring water.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #ec4899 0%, #db2777 50%, #be185d 100%)",
     group_id: null,
     open_to_join: true,
     booking_url: null,
-    activity_type: "HIIT",
+    category: "hiit",
+    duration: 50,
   },
   {
     id: "w-tomorrow-climb",
     title: "Brooklyn Boulders sesh",
     start_time: daysFromNow(1, 18, 0),
     location: "Brooklyn Boulders, Gowanus",
-    host: tye,
-    cohosts: [finn],
-    participants: [tye, finn, kyrah, CURRENT_USER],
-    participant_cap: 6,
+    creator_id: tye.id,
+    creator_username: tye.username,
+    creator_full_name: tye.full_name,
+    creator_avatar_url: tye.avatar_url,
+    participants: [wp(tye), wp(finn), wp(kyrah), wp(CURRENT_USER)],
     description: "V4-V6 session. Bring chalk.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #9A5AF0 0%, #7a3dd4 50%, #5b3d8f 100%)",
     group_id: climbCrew.id,
     open_to_join: true,
     booking_url: null,
-    activity_type: "Climbing",
+    category: "climbing",
+    duration: 90,
   },
   {
     id: "w-day2-yoga",
     title: "Sunrise flow on the roof",
     start_time: daysFromNow(2, 6, 30),
     location: "1 Hotel Brooklyn Bridge, Rooftop",
-    host: kyrah,
-    cohosts: [],
-    participants: [kyrah, kiera, CURRENT_USER],
-    participant_cap: 10,
+    creator_id: kyrah.id,
+    creator_username: kyrah.username,
+    creator_full_name: kyrah.full_name,
+    creator_avatar_url: kyrah.avatar_url,
+    participants: [wp(kyrah), wp(kiera), wp(CURRENT_USER)],
     description: "Rooftop vinyasa watching the sun come up over Manhattan. BYOM (bring your own mat).",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #9A5AF0 0%, #b07af5 50%, #c39cff 100%)",
     group_id: null,
     open_to_join: true,
     booking_url: null,
-    activity_type: "Yoga",
+    category: "yoga",
+    duration: 60,
   },
   // --- Month-spread workouts for schedule grid ---
   {
@@ -440,136 +486,144 @@ export const MOCK_WORKOUTS: MockWorkout[] = [
     title: "West Side Highway 5K",
     start_time: daysAgo(7, 7, 0),
     location: "Pier 40, Hudson River Park",
-    host: michael,
-    cohosts: [],
-    participants: [michael, CURRENT_USER, danny, jb],
-    participant_cap: null,
+    creator_id: michael.id,
+    creator_username: michael.username,
+    creator_full_name: michael.full_name,
+    creator_avatar_url: michael.avatar_url,
+    participants: [wp(michael), wp(CURRENT_USER), wp(danny), wp(jb)],
     description: "Easy 5K along the river path. Meetup at Pier 40.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #0C5DE9 0%, #3A7EF2 100%)",
     group_id: sundayRunners.id,
     open_to_join: true,
     booking_url: null,
-    activity_type: "Running",
+    category: "outdoorRun",
+    duration: 30,
   },
   {
     id: "w-last-week-strength",
     title: "Deadlift day",
     start_time: daysAgo(5, 16, 0),
     location: "Equinox, SoHo",
-    host: brandon,
-    cohosts: [],
-    participants: [brandon, danny, CURRENT_USER],
-    participant_cap: null,
+    creator_id: brandon.id,
+    creator_username: brandon.username,
+    creator_full_name: brandon.full_name,
+    creator_avatar_url: brandon.avatar_url,
+    participants: [wp(brandon), wp(danny), wp(CURRENT_USER)],
     description: "Heavy pulls. Work up to 3RM.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
     group_id: null,
     open_to_join: false,
     booking_url: null,
-    activity_type: "Strength",
+    category: "traditionalStrength",
+    duration: 60,
   },
   {
     id: "w-next-week-cycle",
     title: "Citi Bike century attempt",
     start_time: daysFromNow(8, 6, 0),
     location: "Brooklyn Bridge, Manhattan side",
-    host: luke,
-    cohosts: [finn],
-    participants: [luke, finn, CURRENT_USER, brandon, tye],
-    participant_cap: null,
+    creator_id: luke.id,
+    creator_username: luke.username,
+    creator_full_name: luke.full_name,
+    creator_avatar_url: luke.avatar_url,
+    participants: [wp(luke), wp(finn), wp(CURRENT_USER), wp(brandon), wp(tye)],
     description: "100-mile Citi Bike ride. We're either legends or idiots. Probably both.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #2AD472 0%, #1fc262 100%)",
     group_id: cycleCrew.id,
     open_to_join: true,
     booking_url: null,
-    activity_type: "Cycling",
+    category: "outdoorCycle",
+    duration: 360,
   },
   {
     id: "w-next-week-hiit",
-    title: "Rumble Boxing 🥊",
+    title: "Rumble Boxing",
     start_time: daysFromNow(9, 18, 30),
     location: "Rumble Boxing, FiDi",
-    host: kiera,
-    cohosts: [],
-    participants: [kiera, kyrah, CURRENT_USER],
-    participant_cap: 20,
+    creator_id: kiera.id,
+    creator_username: kiera.username,
+    creator_full_name: kiera.full_name,
+    creator_avatar_url: kiera.avatar_url,
+    participants: [wp(kiera), wp(kyrah), wp(CURRENT_USER)],
     description: "Full-body boxing workout. 10 rounds. Gloves provided.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #ec4899 0%, #db2777 100%)",
     group_id: null,
     open_to_join: true,
     booking_url: null,
-    activity_type: "HIIT",
+    category: "hiit",
+    duration: 45,
   },
   {
     id: "w-mid-month-climb",
     title: "VITAL comp night",
     start_time: daysFromNow(12, 19, 0),
     location: "VITAL Climbing Gym, Williamsburg",
-    host: finn,
-    cohosts: [tye],
-    participants: [finn, tye, kyrah, CURRENT_USER, kiera],
-    participant_cap: 12,
+    creator_id: finn.id,
+    creator_username: finn.username,
+    creator_full_name: finn.full_name,
+    creator_avatar_url: finn.avatar_url,
+    participants: [wp(finn), wp(tye), wp(kyrah), wp(CURRENT_USER), wp(kiera)],
     description: "Monthly bouldering comp. All levels. Beer after.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
     group_id: climbCrew.id,
     open_to_join: true,
     booking_url: null,
-    activity_type: "Climbing",
+    category: "climbing",
+    duration: 120,
   },
   {
     id: "w-mid-month-yoga",
     title: "Y7 candlelight flow",
     start_time: daysFromNow(14, 20, 0),
     location: "Y7 Studio, Flatiron",
-    host: kyrah,
-    cohosts: [],
-    participants: [kyrah, kiera, CURRENT_USER],
-    participant_cap: 25,
+    creator_id: kyrah.id,
+    creator_username: kyrah.username,
+    creator_full_name: kyrah.full_name,
+    creator_avatar_url: kyrah.avatar_url,
+    participants: [wp(kyrah), wp(kiera), wp(CURRENT_USER)],
     description: "Hip-hop vinyasa by candlelight. Heated room. Bring a towel.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #9A5AF0 0%, #7a3dd4 100%)",
     group_id: null,
     open_to_join: true,
     booking_url: null,
-    activity_type: "Yoga",
+    category: "yoga",
+    duration: 60,
   },
   {
     id: "w-late-month-run",
     title: "Prospect Park tempo",
     start_time: daysFromNow(18, 6, 30),
     location: "Grand Army Plaza, Prospect Park",
-    host: charles,
-    cohosts: [michael],
-    participants: [charles, michael, danny, CURRENT_USER],
-    participant_cap: null,
+    creator_id: charles.id,
+    creator_username: charles.username,
+    creator_full_name: charles.full_name,
+    creator_avatar_url: charles.avatar_url,
+    participants: [wp(charles), wp(michael), wp(danny), wp(CURRENT_USER)],
     description: "5-mile tempo run around the park loop. Pacing for 7:30/mi.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #0C5DE9 0%, #093fb0 100%)",
     group_id: sundayRunners.id,
     open_to_join: true,
     booking_url: null,
-    activity_type: "Running",
+    category: "outdoorRun",
+    duration: 40,
   },
   {
     id: "w-end-month-strength",
     title: "Leg day from hell",
     start_time: daysFromNow(22, 17, 0),
     location: "Equinox, Flatiron",
-    host: danny,
-    cohosts: [brandon],
-    participants: [danny, brandon, CURRENT_USER, luke],
-    participant_cap: null,
+    creator_id: danny.id,
+    creator_username: danny.username,
+    creator_full_name: danny.full_name,
+    creator_avatar_url: danny.avatar_url,
+    participants: [wp(danny), wp(brandon), wp(CURRENT_USER), wp(luke)],
     description: "Squats, lunges, leg press, calf raises. You've been warned.",
-    cover_image_url: null,
     cover_gradient: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
     group_id: null,
     open_to_join: false,
     booking_url: null,
-    activity_type: "Strength",
+    category: "traditionalStrength",
+    duration: 75,
   },
 ];
 
@@ -588,70 +642,140 @@ climbCrew.upcoming_workouts = MOCK_WORKOUTS.filter(
 // Notifications
 // ----------------------------------------------------------------
 
+// Resolve notification actor from actor_id
+export function getNotificationActor(n: MockNotification): MockUser | undefined {
+  if (!n.actor_id) return undefined;
+  return getAllKnownUsers().find((u) => u.id === n.actor_id);
+}
+
+// Resolve notification link href from type + entity_id/related_id
+export function getNotificationLink(n: MockNotification): string {
+  switch (n.type) {
+    case "friend_request": {
+      const actor = getNotificationActor(n);
+      return actor ? `/profile/${actor.username}` : "#";
+    }
+    case "friend_request_accepted":
+    case "profile_view": {
+      const actor = getNotificationActor(n);
+      return actor ? `/profile/${actor.username}` : "#";
+    }
+    case "workout_join":
+    case "workout_update":
+    case "workout_invite":
+    case "friend_workout":
+    case "workout_reaction":
+    case "workout_comment":
+    case "upcoming_activity":
+      return n.entity_id ? `/workouts/${n.entity_id}` : "#";
+    case "new_message":
+      return n.related_id ? `/messages/${n.related_id}` : "#";
+    default:
+      return "#";
+  }
+}
+
 // TODO: replace with notifications RPC
 export const MOCK_NOTIFICATIONS: MockNotification[] = [
   {
     id: "n1",
-    type: "rsvp_yes",
-    actor: finn,
-    target_workout: MOCK_WORKOUTS[0],
+    type: "workout_join",
+    message: "Finn joined your workout Good Saturdays is back!!",
+    actor_id: finn.id,
+    entity_id: "w-good-sat",
+    related_id: null,
+    is_read: false,
     created_at: daysAgo(0, 14, 22),
-    unread: true,
   },
   {
     id: "n2",
     type: "workout_invite",
-    actor: luke,
-    target_workout: MOCK_WORKOUTS[0],
+    message: "Luke invited you to Good Saturdays is back!!",
+    actor_id: luke.id,
+    entity_id: "w-good-sat",
+    related_id: null,
+    is_read: false,
     created_at: daysAgo(0, 10, 5),
-    unread: true,
   },
   {
     id: "n3",
     type: "friend_request",
-    actor: charles,
+    message: "Charles sent you a friend request",
+    actor_id: charles.id,
+    entity_id: null,
+    related_id: null,
+    is_read: false,
     created_at: daysAgo(1, 9, 30),
-    unread: true,
   },
   {
     id: "n4",
-    type: "group_invite",
-    actor: michael,
-    target_group: sundayRunners,
+    type: "workout_comment",
+    message: "Kyrah commented on VITAL bouldering sesh",
+    actor_id: kyrah.id,
+    entity_id: "w-bouldering",
+    related_id: null,
+    is_read: true,
     created_at: daysAgo(1, 8, 0),
-    unread: false,
   },
   {
     id: "n5",
-    type: "rsvp_yes",
-    actor: kyrah,
-    target_workout: MOCK_WORKOUTS[2],
+    type: "workout_reaction",
+    message: "Kyrah reacted to VITAL bouldering sesh",
+    actor_id: kyrah.id,
+    entity_id: "w-bouldering",
+    related_id: null,
+    is_read: true,
     created_at: daysAgo(2, 16, 45),
-    unread: false,
   },
   {
     id: "n6",
-    type: "workout_reminder",
-    actor: CURRENT_USER,
-    target_workout: MOCK_WORKOUTS[1],
+    type: "upcoming_activity",
+    message: "Central Park 6-miler starts in 1 hour",
+    actor_id: null,
+    entity_id: "w-central-park",
+    related_id: null,
+    is_read: false,
     created_at: daysAgo(0, 6, 0),
-    unread: true,
   },
   {
     id: "n7",
-    type: "rsvp_maybe",
-    actor: brandon,
-    target_workout: MOCK_WORKOUTS[3],
+    type: "friend_workout",
+    message: "Brandon posted a new workout: Deadlift day",
+    actor_id: brandon.id,
+    entity_id: "w-last-week-strength",
+    related_id: null,
+    is_read: true,
     created_at: daysAgo(2, 20, 10),
-    unread: false,
   },
   {
     id: "n8",
-    type: "rsvp_yes",
-    actor: tye,
-    target_workout: MOCK_WORKOUTS[2],
+    type: "friend_request_accepted",
+    message: "Tye accepted your friend request",
+    actor_id: tye.id,
+    entity_id: null,
+    related_id: null,
+    is_read: true,
     created_at: daysAgo(3, 11, 0),
-    unread: false,
+  },
+  {
+    id: "n9",
+    type: "workout_join",
+    message: "Danny joined your workout Morning shake-out run",
+    actor_id: danny.id,
+    entity_id: "w-today-run",
+    related_id: null,
+    is_read: false,
+    created_at: daysAgo(0, 7, 0),
+  },
+  {
+    id: "n10",
+    type: "profile_view",
+    message: "Michael viewed your profile",
+    actor_id: michael.id,
+    entity_id: null,
+    related_id: null,
+    is_read: true,
+    created_at: daysAgo(4, 15, 0),
   },
 ];
 
@@ -818,21 +942,45 @@ export function getFriendStatus(userId: string): FriendStatus {
 // Activity cover photos (Unsplash)
 // ----------------------------------------------------------------
 
+// Keys match iOS WorkoutCategory camelCase keys
 export const ACTIVITY_COVER_PHOTOS: Record<string, string> = {
-  Running: "https://images.unsplash.com/photo-1486218119243-13883505764c?w=600&q=80&auto=format&fit=crop",
-  Cycling: "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=600&q=80&auto=format&fit=crop",
-  Climbing: "https://images.unsplash.com/photo-1522163182402-834f871fd851?w=600&q=80&auto=format&fit=crop",
-  Yoga: "https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=600&q=80&auto=format&fit=crop",
-  Strength: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&q=80&auto=format&fit=crop",
-  HIIT: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&q=80&auto=format&fit=crop",
-  Track: "https://images.unsplash.com/photo-1502904550040-7534597429ae?w=600&q=80&auto=format&fit=crop",
-  Walking: "https://images.unsplash.com/photo-1502163140606-888448ae8cfe?w=600&q=80&auto=format&fit=crop",
-  Boxing: "https://images.unsplash.com/photo-1517438476312-10d79c077509?w=600&q=80&auto=format&fit=crop",
-  Basketball: "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600&q=80&auto=format&fit=crop",
+  outdoorRun: "https://images.unsplash.com/photo-1486218119243-13883505764c?w=600&q=80&auto=format&fit=crop",
+  indoorRun: "https://images.unsplash.com/photo-1486218119243-13883505764c?w=600&q=80&auto=format&fit=crop",
+  outdoorCycle: "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=600&q=80&auto=format&fit=crop",
+  indoorCycle: "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=600&q=80&auto=format&fit=crop",
+  climbing: "https://images.unsplash.com/photo-1522163182402-834f871fd851?w=600&q=80&auto=format&fit=crop",
+  yoga: "https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=600&q=80&auto=format&fit=crop",
+  traditionalStrength: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&q=80&auto=format&fit=crop",
+  functionalStrength: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&q=80&auto=format&fit=crop",
+  hiit: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&q=80&auto=format&fit=crop",
+  trackAndField: "https://images.unsplash.com/photo-1502904550040-7534597429ae?w=600&q=80&auto=format&fit=crop",
+  outdoorWalk: "https://images.unsplash.com/photo-1502163140606-888448ae8cfe?w=600&q=80&auto=format&fit=crop",
+  boxing: "https://images.unsplash.com/photo-1517438476312-10d79c077509?w=600&q=80&auto=format&fit=crop",
+  basketball: "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600&q=80&auto=format&fit=crop",
 };
 
-export function coverPhotoForActivity(activity: string): string {
-  return ACTIVITY_COVER_PHOTOS[activity] ?? ACTIVITY_COVER_PHOTOS["Running"];
+export function coverPhotoForActivity(categoryKey: string): string {
+  return ACTIVITY_COVER_PHOTOS[categoryKey] ?? ACTIVITY_COVER_PHOTOS["outdoorRun"];
+}
+
+// Build a MockUser from the flattened creator fields on a workout.
+// Consumers that need a MockUser for the host (avatar, profile link) use this.
+export function getWorkoutHost(w: MockWorkout): MockUser {
+  const first = (w.creator_full_name || "?").charAt(0).toUpperCase();
+  return {
+    id: w.creator_id,
+    full_name: w.creator_full_name,
+    username: w.creator_username,
+    avatar_url: w.creator_avatar_url,
+    initials: first,
+    gradient_seed: first,
+  };
+}
+
+// Get the display name for a workout's category (maps key to ACTIVITIES list)
+export function categoryDisplayName(key: string): string {
+  const activity = ACTIVITIES.find((a) => a.key === key);
+  return activity?.displayName ?? key;
 }
 
 // ----------------------------------------------------------------
@@ -854,9 +1002,7 @@ export function getAllKnownUsers(): MockUser[] {
   MOCK_INCOMING_REQUESTS.forEach((r) => add(r.user));
   MOCK_OUTGOING_REQUESTS.forEach((r) => add(r.user));
   MOCK_WORKOUTS.forEach((w) => {
-    add(w.host);
-    w.cohosts.forEach(add);
-    w.participants.forEach(add);
+    add(getWorkoutHost(w));
   });
   MOCK_GROUPS.forEach((g) => {
     g.members.forEach(add);
@@ -886,14 +1032,14 @@ export function getMutualFriends(otherUser: MockUser): MockUser[] {
 export function getSharedWorkouts(otherUser: MockUser): MockWorkout[] {
   return MOCK_WORKOUTS.filter(
     (w) =>
-      w.participants.some((p) => p.id === CURRENT_USER.id) &&
-      w.participants.some((p) => p.id === otherUser.id),
+      w.participants.some((p) => p.user_id === CURRENT_USER.id) &&
+      w.participants.some((p) => p.user_id === otherUser.id),
   );
 }
 
 // TODO: replace with RPC
 export function getWorkoutsHostedByUser(user: MockUser): MockWorkout[] {
-  return MOCK_WORKOUTS.filter((w) => w.host.id === user.id);
+  return MOCK_WORKOUTS.filter((w) => w.creator_id === user.id);
 }
 
 // TODO: replace with RPC
@@ -902,8 +1048,8 @@ export function getWorkoutsUserCouldJoin(otherUser: MockUser): MockWorkout[] {
   return MOCK_WORKOUTS.filter(
     (w) =>
       new Date(w.start_time) >= now &&
-      w.participants.some((p) => p.id === otherUser.id) &&
-      !w.participants.some((p) => p.id === CURRENT_USER.id),
+      w.participants.some((p) => p.user_id === otherUser.id) &&
+      !w.participants.some((p) => p.user_id === CURRENT_USER.id),
   );
 }
 
@@ -1051,9 +1197,9 @@ export function encodeWorkoutCard(w: MockWorkout): string {
     w.id,
     w.title,
     w.start_time,
-    w.location,
-    w.activity_type ?? "other",
-    w.host.id,
+    w.location ?? "",
+    w.category ?? "other",
+    w.creator_id,
     w.booking_url ?? "",
   ].join("::");
 }

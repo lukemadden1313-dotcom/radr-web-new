@@ -160,14 +160,13 @@ Open question: does iOS already have an equivalent RPC? If yes, web should use t
 
 Web expects each notification with:
 - id (UUID)
-- type (one of: `rsvp_yes`, `rsvp_maybe`, `friend_request`, `workout_invite`, `group_invite`, `workout_reminder`)
-- actor (full MockUser shape — see web `MockUser` type)
-- target_workout (MockWorkout shape | null)
-- target_group (MockGroup shape | null)
+- type (one of iOS's 13 NotificationCategory values: `friend_request`, `friend_request_accepted`, `upcoming_activity`, `workout_update`, `workout_invite`, `friend_workout`, `workout_join`, `workout_reaction`, `workout_comment`, `new_message`, `calendar_error`, `profile_view`, `general`)
+- message (pre-rendered string — display directly, do NOT assemble from type + actor)
+- actor_id (UUID string | null — resolve avatar via profile lookup)
+- entity_id (UUID string | null — canonical target: workout ID, profile ID)
+- related_id (UUID string | null — context-dependent: conversation ID, etc.)
+- is_read (boolean — NOTE: was previously `unread` with inverted semantics)
 - created_at (ISO timestamp — IMPORTANT: web's timeAgo helper returns "just now" for future-dated or sub-minute diffs, so DB timestamps should be UTC and accurate)
-- unread (boolean)
-
-Note: notification type names (`rsvp_yes` etc.) were invented for web mock data — verify against iOS NotificationType enum during Notifications audit.
 
 ---
 
@@ -223,9 +222,9 @@ Additionally, `src/components/layout/avatar-menu.tsx` hardcodes avatar initial "
 
 | Mock helper | Defined at | Used by | RPC needed | Returns |
 |---|---|---|---|---|
-| `MOCK_WORKOUTS` (constant) | mock-data.ts:264 | `/dashboard`, `/workouts/[id]`, `/schedule`, `/profile/[username]` | `get_workouts_for_user`, `get_workout(id)` | `MockWorkout` shape: id, title, start_time, location, host (MockUser), cohosts, participants, participant_cap, description, cover_image_url, cover_gradient, group_id, open_to_join, booking_url, activity_type |
+| `MOCK_WORKOUTS` (constant) | mock-data.ts | `/dashboard`, `/workouts/[id]`, `/schedule`, `/profile/[username]` | `get_workouts_for_user`, `get_workout(id)` | `MockWorkout` shape: id, creator_id, creator_username, creator_full_name, creator_avatar_url, title, category, start_time, duration, location?, description?, open_to_join, booking_url?, group_id?, participants (WorkoutParticipant[]), cover_image_url? (web-only), cover_gradient? (web-only) |
 | `MOCK_GROUPS` (constant) | mock-data.ts:215 | `/dashboard`, `/groups`, `/groups/[id]`, `/workouts/[id]` | `get_user_groups`, expanded `get_group_for_deep_link` | `MockGroup` shape: id, name, description, avatar_url, cover_photo_url, cover_gradient, member_count, members (MockUser[]), upcoming_workouts (MockWorkout[]), creator_id |
-| `MOCK_NOTIFICATIONS` (constant) | mock-data.ts:592 | `/notifications`, `/schedule` (unread count) | `get_notifications(user_id)` | `MockNotification` shape: id, type, actor (MockUser), target_workout?, target_group?, created_at, unread |
+| `MOCK_NOTIFICATIONS` (constant) | mock-data.ts | `/notifications`, `/schedule` (unread count) | `get_notifications(user_id)` | `MockNotification` shape: id, type (NotificationType), message, actor_id?, entity_id?, related_id?, is_read, created_at |
 | `MOCK_RECOMMENDATIONS` (constant) | mock-data.ts:663 | `/dashboard` | `get_recommendations(user_id)` | `MockRecommendation` shape: workout (MockWorkout), reason (string) |
 | `MOCK_INVITES` (constant) | mock-data.ts:687 | `/dashboard` | `get_pending_invites(user_id)` | MockWorkout[] |
 | `MOCK_FRIENDS` (constant) | mock-data.ts:111 | `/friends`, `/groups/[id]` | `get_friends(user_id)` | MockUser[] |
@@ -331,10 +330,10 @@ Canonical docs in `docs/ios-canonical/`:
 | `workouts.md` | WorkoutDTO fields, ParticipantProfile shape, CreateWorkoutDTO, MockWorkout divergence table | Complete |
 | `notifications.md` | NotificationCategory enum (13 types), AppNotification struct, MockNotification divergence table | Complete |
 
-**Contract fixes needed on web (before wiring to real data):**
+**Contract fixes completed (2026-05-27):**
 
-- **MockWorkout:** `host` must flatten to `creator_id + creator_username + creator_full_name + creator_avatar_url` (iOS doesn't embed a User object). `cohosts` doesn't exist on iOS — remove. `participants` shape differs (iOS: `{user_id, status, profile: {username, avatar_url}}`). `location` and `description` should be optional. Add `duration`. See `docs/ios-canonical/workouts.md` divergence table.
-- **MockNotification:** CRITICAL — 3 of 6 web type names don't exist in iOS (`rsvp_yes`, `rsvp_maybe`, `group_invite`). 8 iOS types missing from web. Model structure fundamentally different: iOS uses flat rows with pre-rendered `message` string + UUID references, not embedded objects. See `docs/ios-canonical/notifications.md` divergence table.
+- **MockWorkout:** ALIGNED. Flattened `host` → `creator_id + creator_username + creator_full_name + creator_avatar_url`. Removed `cohosts` and `participant_cap`. `participants` now `WorkoutParticipant[]` matching iOS shape (`{user_id, status, profile: {username, avatar_url}}`). `location` and `description` are now optional. Added `duration` (minutes). Renamed `activity_type` → `category` using iOS camelCase keys. Added `RSVPStatus` type (`"going" | "maybe" | "cant"`). `cover_image_url` and `cover_gradient` are now optional web-only fields. Helper `getWorkoutHost(w)` builds a MockUser from flat fields. Helper `categoryDisplayName(key)` resolves display names from ACTIVITIES list.
+- **MockNotification:** ALIGNED. Replaced embedded-object model with iOS flat model: `{id, type, message, actor_id, entity_id, related_id, is_read, created_at}`. Adopted all 13 iOS NotificationCategory types. Removed invented types (`rsvp_yes`, `rsvp_maybe`, `group_invite`). `message` is now pre-rendered (display directly). `is_read` replaces inverted `unread`. Helpers `getNotificationActor(n)` and `getNotificationLink(n)` resolve actor/routing from IDs.
 
 **Mock types still WITHOUT a canonical iOS doc:**
 

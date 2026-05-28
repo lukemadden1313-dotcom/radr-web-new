@@ -17,14 +17,18 @@ import {
 // ----------------------------------------------------------------
 
 const ACTIVITY_STRIP_COLOR: Record<string, string> = {
-  Running: "var(--radr-cobalt)",
-  Cycling: "var(--radr-green)",
-  Yoga: "var(--radr-purple)",
-  Climbing: "#f59e0b",
-  Strength: "#ef4444",
-  HIIT: "#ec4899",
-  Track: "var(--radr-cobalt)",
-  Walking: "var(--radr-green)",
+  outdoorRun: "var(--radr-cobalt)",
+  indoorRun: "var(--radr-cobalt)",
+  outdoorCycle: "var(--radr-green)",
+  indoorCycle: "var(--radr-green)",
+  yoga: "var(--radr-purple)",
+  climbing: "#f59e0b",
+  traditionalStrength: "#ef4444",
+  functionalStrength: "#ef4444",
+  hiit: "#ec4899",
+  trackAndField: "var(--radr-cobalt)",
+  outdoorWalk: "var(--radr-green)",
+  boxing: "#ec4899",
 };
 
 function stripColorForActivity(type: string): string {
@@ -192,7 +196,7 @@ function MonthCell({ day }: { day: Date | null }) {
   const workouts = workoutsOnDay(day);
   const hasWorkouts = workouts.length > 0;
   const coverPhoto = hasWorkouts
-    ? workouts[0].cover_image_url || coverPhotoForActivity(workouts[0].activity_type)
+    ? workouts[0].cover_image_url || coverPhotoForActivity(workouts[0].category)
     : null;
 
   // Today + no workouts → filled cobalt cell
@@ -282,7 +286,7 @@ function MonthCell({ day }: { day: Date | null }) {
             right: 4,
             width: 6,
             height: 6,
-            background: stripColorForActivity(workouts[0].activity_type),
+            background: stripColorForActivity(workouts[0].category),
           }}
         />
       )}
@@ -311,7 +315,7 @@ export default function SchedulePage() {
   const month = now.getMonth();
   const grid = getMonthGrid(year, month);
   const todayWorkouts = workoutsOnDay(now);
-  const unreadCount = MOCK_NOTIFICATIONS.filter((n) => n.unread).length;
+  const unreadCount = MOCK_NOTIFICATIONS.filter((n) => !n.is_read).length;
 
   return (
     <SiteShell glow="cobalt">
@@ -447,7 +451,7 @@ export default function SchedulePage() {
                 <WorkoutListRow
                   key={w.id}
                   workout={w}
-                  stripColor={stripColorForActivity(w.activity_type)}
+                  stripColor={stripColorForActivity(w.category)}
                   hideWeekday
                 />
               ))}

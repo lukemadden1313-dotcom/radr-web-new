@@ -4,6 +4,8 @@ import { AvatarImg } from "@/components/avatar-img";
 import BrandDot from "@/components/brand-dot";
 import {
   MOCK_NOTIFICATIONS,
+  getNotificationActor,
+  getNotificationLink,
   type MockUser,
   type MockNotification,
 } from "@/lib/mock-data";
@@ -37,19 +39,20 @@ function timeAgo(iso: string): string {
   return Math.floor(diff / 604800) + "w";
 }
 
-function notificationHref(n: MockNotification): string {
-  switch (n.type) {
-    case "rsvp_yes":
-    case "rsvp_maybe":
-    case "workout_invite":
-    case "workout_reminder":
-      return n.target_workout ? `/workouts/${n.target_workout.id}` : "#";
-    case "group_invite":
-      return n.target_group ? `/groups/${n.target_group.id}` : "#";
-    case "friend_request":
-      return `/profile/${n.actor.username}`;
-    default:
-      return "#";
+// Notification icon per type (matches iOS NotificationCategory)
+function notificationIcon(type: MockNotification["type"]): { icon: string; color: string } {
+  switch (type) {
+    case "friend_request": return { icon: "\ud83d\udc64", color: "var(--radr-cobalt)" };
+    case "friend_request_accepted": return { icon: "\u2705", color: "var(--radr-green)" };
+    case "workout_join": return { icon: "\ud83d\udc65", color: "#818cf8" };
+    case "workout_invite": return { icon: "\u2709\ufe0f", color: "#06b6d4" };
+    case "workout_update": return { icon: "\u26a0\ufe0f", color: "#ef4444" };
+    case "workout_reaction": return { icon: "\u2764\ufe0f", color: "#ec4899" };
+    case "workout_comment": return { icon: "\ud83d\udcac", color: "#a855f7" };
+    case "friend_workout": return { icon: "\ud83c\udfc3", color: "var(--radr-green)" };
+    case "upcoming_activity": return { icon: "\u23f0", color: "#f97316" };
+    case "profile_view": return { icon: "\ud83d\udc41\ufe0f", color: "#a855f7" };
+    default: return { icon: "\ud83d\udd14", color: "var(--radr-text-muted)" };
   }
 }
 
@@ -132,84 +135,20 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
+// iOS notifications use pre-rendered `message`. Display it directly.
 function NotificationText({ n }: { n: MockNotification }) {
-  const actorFirst = n.actor.full_name.split(" ")[0];
-
-  switch (n.type) {
-    case "rsvp_yes":
-      return (
-        <span>
-          <span className="font-medium text-radr-text">{actorFirst}</span>
-          {" "}
-          <span className="text-radr-text-muted">rsvp&apos;d Going {"\ud83d\udc4d"} to</span>
-          {" "}
-          {n.target_workout && (
-            <span className="italic" style={{ color: "var(--radr-cobalt)" }}>{n.target_workout.title}</span>
-          )}
-        </span>
-      );
-    case "rsvp_maybe":
-      return (
-        <span>
-          <span className="font-medium text-radr-text">{actorFirst}</span>
-          {" "}
-          <span className="text-radr-text-muted">rsvp&apos;d Maybe {"\ud83e\udd14"} to</span>
-          {" "}
-          {n.target_workout && (
-            <span className="italic" style={{ color: "var(--radr-cobalt)" }}>{n.target_workout.title}</span>
-          )}
-        </span>
-      );
-    case "friend_request":
-      return (
-        <span>
-          <span className="font-medium text-radr-text">{actorFirst}</span>
-          {" "}
-          <span className="text-radr-text-muted">sent you a friend request</span>
-        </span>
-      );
-    case "workout_invite":
-      return (
-        <span>
-          <span className="font-medium text-radr-text">{actorFirst}</span>
-          {" "}
-          <span className="text-radr-text-muted">invited you to</span>
-          {" "}
-          {n.target_workout && (
-            <span className="italic" style={{ color: "var(--radr-cobalt)" }}>{n.target_workout.title}</span>
-          )}
-        </span>
-      );
-    case "group_invite":
-      return (
-        <span>
-          <span className="font-medium text-radr-text">{actorFirst}</span>
-          {" "}
-          <span className="text-radr-text-muted">invited you to</span>
-          {" "}
-          {n.target_group && (
-            <span className="italic" style={{ color: "var(--radr-green)" }}>{n.target_group.name}</span>
-          )}
-        </span>
-      );
-    case "workout_reminder":
-      return (
-        <span>
-          {n.target_workout && (
-            <span className="font-medium text-radr-text">{n.target_workout.title}</span>
-          )}
-          {" "}
-          <span className="text-radr-text-muted">starts soon</span>
-        </span>
-      );
-    default:
-      return <span className="text-radr-text-muted">New notification</span>;
-  }
+  return (
+    <span className="text-radr-text-muted">
+      {n.message}
+    </span>
+  );
 }
 
 function NotificationRow({ n, showBorder }: { n: MockNotification; showBorder: boolean }) {
-  const href = notificationHref(n);
+  const href = getNotificationLink(n);
   const isFriendRequest = n.type === "friend_request";
+  const actor = getNotificationActor(n);
+  const { icon } = notificationIcon(n.type);
 
   return (
     <Link
@@ -221,8 +160,17 @@ function NotificationRow({ n, showBorder }: { n: MockNotification; showBorder: b
     >
       {/* Avatar with unread dot */}
       <div className="relative shrink-0">
-        <UserAvatar user={n.actor} size={40} />
-        {n.unread && (
+        {actor ? (
+          <UserAvatar user={actor} size={40} />
+        ) : (
+          <span
+            className="rounded-full shrink-0 flex items-center justify-center text-lg"
+            style={{ width: 40, height: 40, background: "var(--radr-surface-2)" }}
+          >
+            {icon}
+          </span>
+        )}
+        {!n.is_read && (
           <span
             className="absolute rounded-full"
             style={{
@@ -290,7 +238,7 @@ export default function NotificationsPage() {
 
   const recent = sorted.filter((n) => new Date(n.created_at) >= oneDayAgo);
   const earlier = sorted.filter((n) => new Date(n.created_at) < oneDayAgo);
-  const unreadCount = sorted.filter((n) => n.unread).length;
+  const unreadCount = sorted.filter((n) => !n.is_read).length;
 
   return (
     <SiteShell glow="cobalt">

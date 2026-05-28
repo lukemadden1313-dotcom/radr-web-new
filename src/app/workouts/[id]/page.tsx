@@ -8,8 +8,12 @@ import {
   MOCK_WORKOUTS,
   MOCK_GROUPS,
   coverPhotoForActivity,
+  categoryDisplayName,
+  getWorkoutHost,
+  getAllKnownUsers,
   type MockUser,
   type MockWorkout,
+  type WorkoutParticipant,
 } from "@/lib/mock-data";
 
 // ----------------------------------------------------------------
@@ -46,7 +50,21 @@ function formatFullDate(iso: string): string {
 }
 
 function isUserGoing(workout: MockWorkout): boolean {
-  return workout.participants.some((p) => p.id === CURRENT_USER.id);
+  return workout.participants.some((p) => p.user_id === CURRENT_USER.id);
+}
+
+// Resolve a WorkoutParticipant to a MockUser for avatar/name display
+function resolveParticipant(p: WorkoutParticipant): MockUser {
+  const found = getAllKnownUsers().find((u) => u.id === p.user_id);
+  if (found) return found;
+  return {
+    id: p.user_id,
+    full_name: p.profile.username,
+    username: p.profile.username,
+    avatar_url: p.profile.avatar_url,
+    initials: p.profile.username.charAt(0).toUpperCase(),
+    gradient_seed: p.profile.username.charAt(0).toUpperCase(),
+  };
 }
 
 function resolveGroup(groupId: string | null) {
@@ -68,15 +86,15 @@ type ActivityItem = {
 };
 
 function buildMockActivity(workout: MockWorkout): ActivityItem[] {
-  const host = workout.host;
+  const host = getWorkoutHost(workout);
 
   // RSVPs: newest first. Filter out host, take up to 4.
   const rsvps = workout.participants
-    .filter((p) => p.id !== host.id)
+    .filter((p) => p.user_id !== workout.creator_id)
     .slice(0, 4)
-    .map((p, i, arr): ActivityItem => ({
-      id: `a-rsvp-${p.id}`,
-      actor: p,
+    .map((p, i): ActivityItem => ({
+      id: `a-rsvp-${p.user_id}`,
+      actor: resolveParticipant(p),
       action: "rsvp'd Going",
       emoji: "\ud83d\udc4d",
       // Newest RSVP = smallest timeAgo. Spread from 1h to ~(2*len)h.
@@ -188,11 +206,12 @@ export default async function WorkoutDetailPage({ params }: Props) {
 
   const going = isUserGoing(workout);
   const group = resolveGroup(workout.group_id);
-  const coverUrl = workout.cover_image_url || coverPhotoForActivity(workout.activity_type);
+  const coverUrl = workout.cover_image_url || coverPhotoForActivity(workout.category);
   const dateStr = formatFullDate(workout.start_time);
   const goingCount = workout.participants.length;
-  const locationParts = workout.location.split(",").map((s) => s.trim());
+  const locationParts = workout.location ? workout.location.split(",").map((s) => s.trim()) : [];
   const activityItems = buildMockActivity(workout);
+  const host = getWorkoutHost(workout);
 
   return (
     <SiteShell glow="cobalt">
@@ -253,7 +272,7 @@ export default async function WorkoutDetailPage({ params }: Props) {
               borderRadius: 24,
               overflow: "hidden",
               aspectRatio: "16 / 11",
-              background: workout.cover_gradient,
+              background: workout.cover_gradient || "var(--radr-cobalt)",
             }}
           >
             <img
@@ -293,7 +312,7 @@ export default async function WorkoutDetailPage({ params }: Props) {
               }}
             >
               <span style={{ color: "#fff", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                {workout.activity_type}
+                {categoryDisplayName(workout.category)}
               </span>
             </div>
 
@@ -379,14 +398,14 @@ export default async function WorkoutDetailPage({ params }: Props) {
         <div className="px-6 mt-6">
           <p className="text-sm text-radr-text-muted mb-2">Hosted by</p>
           <div className="flex items-center gap-3">
-            <Link href={`/profile/${workout.host.username}`} className="no-underline text-inherit flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
-              <UserAvatar user={workout.host} size={40} />
+            <Link href={`/profile/${host.username}`} className="no-underline text-inherit flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+              <UserAvatar user={host} size={40} />
               <div className="min-w-0">
                 <p className="font-medium text-radr-text" style={{ fontSize: "1.125rem" }}>
-                  {workout.host.full_name}
+                  {host.full_name}
                 </p>
                 <p className="text-sm text-radr-text-muted">
-                  @{workout.host.username}
+                  @{host.username}
                 </p>
               </div>
             </Link>
@@ -396,35 +415,37 @@ export default async function WorkoutDetailPage({ params }: Props) {
         {/* ============================================================
             5. LOCATION ROW
             ============================================================ */}
-        <div className="px-6 mt-5">
-          <div className="flex gap-3" style={{ alignItems: "flex-start" }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" style={{ color: "var(--radr-cobalt)" }}>
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0Z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            <div className="min-w-0">
-              <p className="font-medium text-radr-text">
-                {locationParts[0]}
-              </p>
-              {locationParts.length > 1 && (
-                <p className="text-sm text-radr-text-muted mt-0.5">
-                  {locationParts.slice(1).join(", ")}
+        {locationParts.length > 0 && (
+          <div className="px-6 mt-5">
+            <div className="flex gap-3" style={{ alignItems: "flex-start" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" style={{ color: "var(--radr-cobalt)" }}>
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0Z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              <div className="min-w-0">
+                <p className="font-medium text-radr-text">
+                  {locationParts[0]}
                 </p>
-              )}
-              {workout.booking_url && (
-                <a
-                  href={workout.booking_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm font-semibold mt-2 no-underline"
-                  style={{ color: "var(--radr-cobalt)" }}
-                >
-                  Book a spot &rarr;
-                </a>
-              )}
+                {locationParts.length > 1 && (
+                  <p className="text-sm text-radr-text-muted mt-0.5">
+                    {locationParts.slice(1).join(", ")}
+                  </p>
+                )}
+                {workout.booking_url && (
+                  <a
+                    href={workout.booking_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm font-semibold mt-2 no-underline"
+                    style={{ color: "var(--radr-cobalt)" }}
+                  >
+                    Book a spot &rarr;
+                  </a>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* ============================================================
             6. DESCRIPTION
@@ -448,19 +469,22 @@ export default async function WorkoutDetailPage({ params }: Props) {
 
           {goingCount > 0 ? (
             <div className="flex flex-wrap gap-4">
-              {workout.participants.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/profile/${p.username}`}
-                  className="flex flex-col items-center gap-1.5 no-underline text-inherit"
-                  style={{ width: 72 }}
-                >
-                  <UserAvatar user={p} size={44} />
-                  <span className="text-xs text-radr-text-muted text-center leading-tight truncate w-full">
-                    {p.full_name.split(" ")[0]}
-                  </span>
-                </Link>
-              ))}
+              {workout.participants.map((p) => {
+                const user = resolveParticipant(p);
+                return (
+                  <Link
+                    key={p.user_id}
+                    href={`/profile/${user.username}`}
+                    className="flex flex-col items-center gap-1.5 no-underline text-inherit"
+                    style={{ width: 72 }}
+                  >
+                    <UserAvatar user={user} size={44} />
+                    <span className="text-xs text-radr-text-muted text-center leading-tight truncate w-full">
+                      {user.full_name.split(" ")[0]}
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-radr-text-dim italic">
