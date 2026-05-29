@@ -2,6 +2,30 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Routes that don't require authentication.
+const PUBLIC_ROUTES = [
+  "/",
+  "/sign-in",
+  "/auth/callback",
+];
+
+// Path prefixes that are always public (share pages, legal, OG images).
+const PUBLIC_PREFIXES = [
+  "/w/",
+  "/w-v2/",
+  "/g/",
+  "/g-v2/",
+  "/u/",
+];
+
+function isPublicRoute(pathname: string): boolean {
+  if (PUBLIC_ROUTES.includes(pathname)) return true;
+  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) return true;
+  // Static HTML files (terms, privacy, cookies)
+  if (pathname.endsWith(".html")) return true;
+  return false;
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -27,7 +51,17 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refresh the session — this keeps the auth token alive.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Redirect unauthenticated visitors to /sign-in (unless on a public route).
+  const { pathname } = request.nextUrl;
+  if (!user && !isPublicRoute(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/sign-in";
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }
