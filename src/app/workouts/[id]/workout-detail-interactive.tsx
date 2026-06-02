@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AvatarImg } from "@/components/avatar-img";
 import BrandDot from "@/components/brand-dot";
 import { RSVPControl } from "./rsvp-control";
+import { postComment } from "./actions";
 import type { RSVPStatus } from "@/lib/mock-data";
 
 // ----------------------------------------------------------------
@@ -199,13 +200,14 @@ export function WorkoutDetailInteractive({
   }
 
   // -- Comment post handler --
-  // TODO: wire post_comment(workout_id, body) — optimistic only, resets on reload
-  function handlePostComment() {
+  // Optimistic insert + real Supabase write via server action
+  async function handlePostComment() {
     const body = commentText.trim();
     if (!body) return;
+    const optimisticId = `opt-comment-${Date.now()}`;
     setFeed((prev) => [
       {
-        id: `opt-comment-${Date.now()}`,
+        id: optimisticId,
         type: "comment" as const,
         actor: currentUser,
         comment_body: body,
@@ -214,6 +216,19 @@ export function WorkoutDetailInteractive({
       ...prev,
     ]);
     setCommentText("");
+
+    const result = await postComment(workoutId, body);
+    if (result.error) {
+      // Remove optimistic item on failure
+      setFeed((prev) => prev.filter((f) => f.id !== optimisticId));
+    } else if (result.comment) {
+      // Replace optimistic id with real id
+      setFeed((prev) =>
+        prev.map((f) =>
+          f.id === optimisticId ? { ...f, id: `comment-${result.comment!.id}` } : f,
+        ),
+      );
+    }
   }
 
   // Derived: split participants by status

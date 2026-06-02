@@ -1,19 +1,51 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { SiteShell } from "@/components/layout/site-shell";
+import { createClient } from "@/lib/supabase/server";
 import {
-  CURRENT_USER,
-  MOCK_GROUPS,
   coverPhotoForActivity,
   categoryDisplayName,
-  getWorkoutHost,
-  getWorkoutById,
-  getAllKnownUsers,
-  type MockWorkout,
-  type WorkoutParticipant,
   type RSVPStatus,
 } from "@/lib/mock-data";
 import { WorkoutDetailInteractive } from "./workout-detail-interactive";
+
+// ----------------------------------------------------------------
+// Types (from Supabase RPC response)
+// ----------------------------------------------------------------
+
+type DeepLinkWorkout = {
+  id: string;
+  creator_id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  start_time: string;
+  created_at: string;
+  booking_url: string | null;
+  open_to_join: boolean;
+  duration: number | null;
+  category: string | null;
+  group_id: string | null;
+  activity_name: string | null;
+  creator_username: string | null;
+  creator_full_name: string | null;
+  creator_avatar_url: string | null;
+  participants: Array<{
+    user_id: string;
+    status: string;
+    username: string | null;
+    full_name: string | null;
+    avatar_url: string | null;
+  }>;
+};
+
+type DbComment = {
+  id: string;
+  user_id: string;
+  workout_id: string;
+  content: string;
+  created_at: string;
+};
 
 // ----------------------------------------------------------------
 // Helpers
@@ -34,59 +66,25 @@ function formatFullDate(iso: string): string {
   return `${weekday}, ${month} ${day} \u00b7 ${time}`;
 }
 
-function currentUserRsvp(workout: MockWorkout): RSVPStatus | null {
-  const p = workout.participants.find((p) => p.user_id === CURRENT_USER.id);
-  return p ? p.status : null;
+/** Map DB participant status to our RSVPStatus union. */
+function mapStatus(dbStatus: string): RSVPStatus {
+  if (dbStatus === "going") return "going";
+  if (dbStatus === "maybe") return "maybe";
+  if (dbStatus === "cant" || dbStatus === "declined" || dbStatus === "not_going") return "cant";
+  // "accepted" is the legacy iOS value — treat as "going"
+  if (dbStatus === "accepted") return "going";
+  return "going";
 }
 
-function resolveParticipantUser(p: WorkoutParticipant) {
-  const found = getAllKnownUsers().find((u) => u.id === p.user_id);
-  const fallbackInitial = p.profile.username.charAt(0).toUpperCase();
-  return {
-    id: found?.id ?? p.user_id,
-    full_name: found?.full_name ?? p.profile.username,
-    username: found?.username ?? p.profile.username,
-    avatar_url: found?.avatar_url ?? p.profile.avatar_url,
-    gradient_seed: found?.gradient_seed ?? fallbackInitial,
-  };
-}
-
-function resolveGroup(groupId: string | null) {
-  if (!groupId) return null;
-  const g = MOCK_GROUPS.find((g) => g.id === groupId);
-  return g ? { id: g.id, name: g.name } : null;
-}
-
-// Build initial feed items (serializable)
-function buildInitialFeed(workout: MockWorkout) {
-  const host = getWorkoutHost(workout);
-  const hostUser = {
-    id: host.id,
-    full_name: host.full_name,
-    username: host.username,
-    avatar_url: host.avatar_url,
-    gradient_seed: host.gradient_seed,
-  };
-
-  const rsvps = workout.participants
-    .filter((p) => p.user_id !== workout.creator_id)
-    .slice(0, 4)
-    .map((p, i) => ({
-      id: `a-rsvp-${p.user_id}`,
-      type: "rsvp" as const,
-      actor: resolveParticipantUser(p),
-      rsvp_status: p.status,
-      time_label: `${1 + i * 2}h`,
-    }));
-
-  const created = {
-    id: "a-created",
-    type: "created" as const,
-    actor: hostUser,
-    time_label: "2d",
-  };
-
-  return [...rsvps, created];
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d`;
 }
 
 // ----------------------------------------------------------------
@@ -97,34 +95,169 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function WorkoutDetailPage({ params }: Props) {
   const { id } = await params;
-  const workout = getWorkoutById(id); // TODO: replace with get_workout RPC when backend ready
-  if (!workout) notFound();
 
-  const host = getWorkoutHost(workout);
-  const group = resolveGroup(workout.group_id);
-  const coverUrl = workout.cover_image_url || coverPhotoForActivity(workout.category);
+  const supabase = await createClient();
 
+  // Get authenticated user
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+
+  // Fetch workout via RPC
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    "get_workout_for_deep_link",
+    { p_workout_id: id },
+  );
+
+  const rows = (rpcData ?? []) as DeepLinkWorkout[];
+  const workout = rows[0];
+  if (!workout || rpcError) notFound();
+
+  // Fetch comments for this workout
+  const { data: commentsData } = await supabase
+    .from("comments")
+    .select("id, user_id, workout_id, content, created_at")
+    .eq("workout_id", id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const comments = (commentsData ?? []) as DbComment[];
+
+  // Fetch commenter profiles
+  const commenterIds = [...new Set(comments.map((c) => c.user_id))];
+  const { data: commenterProfiles } = commenterIds.length > 0
+    ? await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url")
+        .in("id", commenterIds)
+    : { data: [] };
+
+  const profileMap = new Map(
+    (commenterProfiles ?? []).map((p: any) => [p.id, p]),
+  );
+
+  // Fetch authenticated user's profile for the comment composer
+  let meUser = {
+    id: authUser?.id ?? "anon",
+    full_name: "You",
+    username: "you",
+    avatar_url: null as string | null,
+    gradient_seed: "Y",
+  };
+
+  if (authUser) {
+    const { data: meProfile } = await supabase
+      .from("profiles")
+      .select("id, username, full_name, avatar_url")
+      .eq("id", authUser.id)
+      .single();
+
+    if (meProfile) {
+      const initial = (meProfile.full_name || "?").charAt(0).toUpperCase();
+      meUser = {
+        id: meProfile.id,
+        full_name: meProfile.full_name ?? "You",
+        username: meProfile.username ?? "you",
+        avatar_url: meProfile.avatar_url,
+        gradient_seed: initial,
+      };
+    }
+  }
+
+  // Build host user
+  const hostInitial = (workout.creator_full_name || "?").charAt(0).toUpperCase();
   const hostUser = {
-    id: host.id,
-    full_name: host.full_name,
-    username: host.username,
-    avatar_url: host.avatar_url,
-    gradient_seed: host.gradient_seed,
+    id: workout.creator_id,
+    full_name: workout.creator_full_name ?? "Host",
+    username: workout.creator_username ?? "unknown",
+    avatar_url: workout.creator_avatar_url,
+    gradient_seed: hostInitial,
   };
 
-  const meUser = {
-    id: CURRENT_USER.id,
-    full_name: CURRENT_USER.full_name,
-    username: CURRENT_USER.username,
-    avatar_url: CURRENT_USER.avatar_url,
-    gradient_seed: CURRENT_USER.gradient_seed,
+  // Build participants
+  const serializedParticipants = workout.participants.map((p) => {
+    const initial = (p.full_name || p.username || "?").charAt(0).toUpperCase();
+    return {
+      user_id: p.user_id,
+      status: mapStatus(p.status),
+      user: {
+        id: p.user_id,
+        full_name: p.full_name ?? p.username ?? "User",
+        username: p.username ?? "user",
+        avatar_url: p.avatar_url,
+        gradient_seed: initial,
+      },
+    };
+  });
+
+  // Current user's RSVP
+  const myParticipant = workout.participants.find(
+    (p) => p.user_id === authUser?.id,
+  );
+  const initialRsvp: RSVPStatus | null = myParticipant
+    ? mapStatus(myParticipant.status)
+    : null;
+
+  // Group chip (fetch from Supabase if group_id exists)
+  let groupChip: { id: string; name: string } | null = null;
+  if (workout.group_id) {
+    const { data: groupData } = await supabase.rpc("get_group_for_deep_link", {
+      p_group_id: workout.group_id,
+    });
+    const groupRows = (groupData ?? []) as Array<{ id: string; name: string }>;
+    if (groupRows[0]) {
+      groupChip = { id: groupRows[0].id, name: groupRows[0].name };
+    }
+  }
+
+  // Build activity feed: comments + RSVP events + "created" event
+  const commentFeedItems = comments.map((c) => {
+    const profile = profileMap.get(c.user_id);
+    const initial = (profile?.full_name || "?").charAt(0).toUpperCase();
+    return {
+      id: `comment-${c.id}`,
+      type: "comment" as const,
+      actor: {
+        id: c.user_id,
+        full_name: profile?.full_name ?? "User",
+        username: profile?.username ?? "user",
+        avatar_url: profile?.avatar_url ?? null,
+        gradient_seed: initial,
+      },
+      comment_body: c.content,
+      time_label: timeAgo(c.created_at),
+    };
+  });
+
+  const rsvpFeedItems = workout.participants
+    .filter((p) => p.user_id !== workout.creator_id)
+    .map((p) => {
+      const initial = (p.full_name || p.username || "?").charAt(0).toUpperCase();
+      return {
+        id: `a-rsvp-${p.user_id}`,
+        type: "rsvp" as const,
+        actor: {
+          id: p.user_id,
+          full_name: p.full_name ?? p.username ?? "User",
+          username: p.username ?? "user",
+          avatar_url: p.avatar_url,
+          gradient_seed: initial,
+        },
+        rsvp_status: mapStatus(p.status),
+        time_label: "",
+      };
+    });
+
+  const createdItem = {
+    id: "a-created",
+    type: "created" as const,
+    actor: hostUser,
+    time_label: timeAgo(workout.created_at),
   };
 
-  const serializedParticipants = workout.participants.map((p) => ({
-    user_id: p.user_id,
-    status: p.status,
-    user: resolveParticipantUser(p),
-  }));
+  const initialFeed = [...commentFeedItems, ...rsvpFeedItems, createdItem];
+
+  // Cover image
+  const coverUrl = coverPhotoForActivity(workout.category ?? "other");
+  const coverGradient = "var(--radr-cobalt)";
 
   return (
     <SiteShell glow="cobalt">
@@ -147,9 +280,9 @@ export default async function WorkoutDetailPage({ params }: Props) {
           </Link>
 
           <div className="flex items-center gap-3">
-            {group && (
+            {groupChip && (
               <Link
-                href={`/groups/${group.id}`}
+                href={`/groups/${groupChip.id}`}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold no-underline"
                 style={{
                   background: "rgba(42, 212, 114, 0.12)",
@@ -157,7 +290,7 @@ export default async function WorkoutDetailPage({ params }: Props) {
                   border: "1px solid rgba(42, 212, 114, 0.2)",
                 }}
               >
-                From {group.name}
+                From {groupChip.name}
               </Link>
             )}
             <button
@@ -180,18 +313,18 @@ export default async function WorkoutDetailPage({ params }: Props) {
         <WorkoutDetailInteractive
           workoutId={workout.id}
           coverUrl={coverUrl}
-          coverGradient={workout.cover_gradient || "var(--radr-cobalt)"}
-          categoryLabel={categoryDisplayName(workout.category)}
+          coverGradient={coverGradient}
+          categoryLabel={categoryDisplayName(workout.category ?? "other")}
           title={workout.title}
           dateStr={formatFullDate(workout.start_time)}
           host={hostUser}
           locationParts={workout.location ? workout.location.split(",").map((s) => s.trim()) : []}
           bookingUrl={workout.booking_url}
           description={workout.description}
-          groupChip={group}
-          initialRsvp={currentUserRsvp(workout)}
+          groupChip={groupChip}
+          initialRsvp={initialRsvp}
           initialParticipants={serializedParticipants}
-          initialFeed={buildInitialFeed(workout)}
+          initialFeed={initialFeed}
           currentUser={meUser}
         />
       </div>
