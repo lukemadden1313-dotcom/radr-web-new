@@ -1,5 +1,14 @@
 import Link from "next/link";
-import type { MockWorkout } from "@/lib/mock-data";
+
+export type WorkoutRowData = {
+  id: string;
+  title: string;
+  start_time: string;
+  location: string | null;
+  participant_count?: number;
+  participants?: Array<{ user_id: string }>;
+  cover_gradient?: string;
+};
 
 function formatShortDate(iso: string, hideWeekday = false): string {
   const d = new Date(iso);
@@ -16,12 +25,12 @@ export function WorkoutListRow({
   stripColor,
   hideWeekday = false,
 }: {
-  workout: MockWorkout;
+  workout: WorkoutRowData;
   reason?: string;
   stripColor?: string;
   hideWeekday?: boolean;
 }) {
-  const goingCount = workout.participants.length;
+  const goingCount = workout.participant_count ?? workout.participants?.length ?? 0;
 
   return (
     <Link
