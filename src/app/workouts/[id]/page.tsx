@@ -10,7 +10,7 @@ import {
 import { WorkoutDetailInteractive } from "./workout-detail-interactive";
 
 // ----------------------------------------------------------------
-// Types (from Supabase RPC response)
+// Types
 // ----------------------------------------------------------------
 
 type DeepLinkWorkout = {
@@ -39,11 +39,25 @@ type DeepLinkWorkout = {
   }>;
 };
 
+type ActivityEvent = {
+  event_type: "workout_created" | "rsvp" | "comment" | "reaction";
+  actor_id: string;
+  actor_username: string | null;
+  actor_full_name: string | null;
+  actor_avatar_url: string | null;
+  occurred_at: string;
+  rsvp_status: string | null;
+  comment_id: string | null;
+  comment_body: string | null;
+  reaction_emoji: string | null;
+};
+
 type DbComment = {
   id: string;
-  user_id: string;
   workout_id: string;
-  content: string;
+  user_id: string;
+  text: string;
+  parent_id: string | null;
   created_at: string;
 };
 
@@ -66,12 +80,10 @@ function formatFullDate(iso: string): string {
   return `${weekday}, ${month} ${day} \u00b7 ${time}`;
 }
 
-/** Map DB participant status to our RSVPStatus union. */
 function mapStatus(dbStatus: string): RSVPStatus {
   if (dbStatus === "going") return "going";
   if (dbStatus === "maybe") return "maybe";
   if (dbStatus === "cant" || dbStatus === "declined" || dbStatus === "not_going") return "cant";
-  // "accepted" is the legacy iOS value — treat as "going"
   if (dbStatus === "accepted") return "going";
   return "going";
 }
@@ -85,6 +97,17 @@ function timeAgo(iso: string): string {
   if (hrs < 24) return `${hrs}h`;
   const days = Math.floor(hrs / 24);
   return `${days}d`;
+}
+
+function actorToUser(evt: ActivityEvent) {
+  const initial = (evt.actor_full_name || evt.actor_username || "?").charAt(0).toUpperCase();
+  return {
+    id: evt.actor_id,
+    full_name: evt.actor_full_name ?? evt.actor_username ?? "User",
+    username: evt.actor_username ?? "user",
+    avatar_url: evt.actor_avatar_url,
+    gradient_seed: initial,
+  };
 }
 
 // ----------------------------------------------------------------
@@ -111,18 +134,23 @@ export default async function WorkoutDetailPage({ params }: Props) {
   const workout = rows[0];
   if (!workout || rpcError) notFound();
 
-  // Fetch comments for this workout
-  const { data: commentsData } = await supabase
-    .from("comments")
-    .select("id, user_id, workout_id, content, created_at")
-    .eq("workout_id", id)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  // Fetch activity feed via RPC
+  const { data: activityData } = await supabase.rpc("get_workout_activity", {
+    p_workout_id: id,
+  });
+  const activityEvents = (activityData ?? []) as ActivityEvent[];
 
-  const comments = (commentsData ?? []) as DbComment[];
+  // Fetch threaded comments from workout_comments
+  const { data: commentsData } = await supabase
+    .from("workout_comments")
+    .select("id, workout_id, user_id, text, parent_id, created_at")
+    .eq("workout_id", id)
+    .order("created_at", { ascending: true });
+
+  const allComments = (commentsData ?? []) as DbComment[];
 
   // Fetch commenter profiles
-  const commenterIds = [...new Set(comments.map((c) => c.user_id))];
+  const commenterIds = [...new Set(allComments.map((c) => c.user_id))];
   const { data: commenterProfiles } = commenterIds.length > 0
     ? await supabase
         .from("profiles")
@@ -134,7 +162,27 @@ export default async function WorkoutDetailPage({ params }: Props) {
     (commenterProfiles ?? []).map((p: any) => [p.id, p]),
   );
 
-  // Fetch authenticated user's profile for the comment composer
+  // Build serializable comments with profiles (for threaded display)
+  const serializedComments = allComments.map((c) => {
+    const profile = profileMap.get(c.user_id);
+    const initial = (profile?.full_name || "?").charAt(0).toUpperCase();
+    return {
+      id: c.id,
+      parent_id: c.parent_id,
+      text: c.text,
+      created_at: c.created_at,
+      time_label: timeAgo(c.created_at),
+      actor: {
+        id: c.user_id,
+        full_name: profile?.full_name ?? "User",
+        username: profile?.username ?? "user",
+        avatar_url: profile?.avatar_url ?? null,
+        gradient_seed: initial,
+      },
+    };
+  });
+
+  // Fetch authenticated user's profile
   let meUser = {
     id: authUser?.id ?? "anon",
     full_name: "You",
@@ -196,7 +244,7 @@ export default async function WorkoutDetailPage({ params }: Props) {
     ? mapStatus(myParticipant.status)
     : null;
 
-  // Group chip (fetch from Supabase if group_id exists)
+  // Group chip
   let groupChip: { id: string; name: string } | null = null;
   if (workout.group_id) {
     const { data: groupData } = await supabase.rpc("get_group_for_deep_link", {
@@ -208,63 +256,37 @@ export default async function WorkoutDetailPage({ params }: Props) {
     }
   }
 
-  // Build activity feed: comments + RSVP events + "created" event
-  const commentFeedItems = comments.map((c) => {
-    const profile = profileMap.get(c.user_id);
-    const initial = (profile?.full_name || "?").charAt(0).toUpperCase();
-    return {
-      id: `comment-${c.id}`,
-      type: "comment" as const,
-      actor: {
-        id: c.user_id,
-        full_name: profile?.full_name ?? "User",
-        username: profile?.username ?? "user",
-        avatar_url: profile?.avatar_url ?? null,
-        gradient_seed: initial,
-      },
-      comment_body: c.content,
-      time_label: timeAgo(c.created_at),
+  // Build activity feed from get_workout_activity RPC
+  const initialFeed = activityEvents.map((evt, i) => {
+    const feedItem: any = {
+      id: `activity-${evt.event_type}-${i}`,
+      type: evt.event_type === "workout_created" ? "created" : evt.event_type,
+      actor: actorToUser(evt),
+      time_label: timeAgo(evt.occurred_at),
     };
+    if (evt.event_type === "rsvp" && evt.rsvp_status) {
+      feedItem.rsvp_status = mapStatus(evt.rsvp_status);
+    }
+    if (evt.event_type === "comment" && evt.comment_body) {
+      feedItem.comment_body = evt.comment_body;
+      if (evt.comment_id) feedItem.id = `comment-${evt.comment_id}`;
+    }
+    if (evt.event_type === "reaction" && evt.reaction_emoji) {
+      feedItem.reaction_emoji = evt.reaction_emoji;
+    }
+    return feedItem;
   });
-
-  const rsvpFeedItems = workout.participants
-    .filter((p) => p.user_id !== workout.creator_id)
-    .map((p) => {
-      const initial = (p.full_name || p.username || "?").charAt(0).toUpperCase();
-      return {
-        id: `a-rsvp-${p.user_id}`,
-        type: "rsvp" as const,
-        actor: {
-          id: p.user_id,
-          full_name: p.full_name ?? p.username ?? "User",
-          username: p.username ?? "user",
-          avatar_url: p.avatar_url,
-          gradient_seed: initial,
-        },
-        rsvp_status: mapStatus(p.status),
-        time_label: "",
-      };
-    });
-
-  const createdItem = {
-    id: "a-created",
-    type: "created" as const,
-    actor: hostUser,
-    time_label: timeAgo(workout.created_at),
-  };
-
-  const initialFeed = [...commentFeedItems, ...rsvpFeedItems, createdItem];
 
   // Cover image
   const coverUrl = coverPhotoForActivity(workout.category ?? "other");
   const coverGradient = "var(--radr-cobalt)";
 
+  const isOwner = authUser?.id === workout.creator_id;
+
   return (
     <SiteShell glow="cobalt">
       <div className="max-w-2xl mx-auto">
-        {/* ============================================================
-            BACK + CONTEXT ROW  (server-rendered, no interactivity)
-            ============================================================ */}
+        {/* BACK + CONTEXT ROW */}
         <div
           className="flex items-center justify-between px-6 py-3"
           style={{ minHeight: 48 }}
@@ -293,23 +315,10 @@ export default async function WorkoutDetailPage({ params }: Props) {
                 From {groupChip.name}
               </Link>
             )}
-            <button
-              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-radr-surface-2 transition-colors cursor-pointer"
-              style={{ background: "transparent", border: "none" }}
-              aria-label="More options"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-radr-text-muted">
-                <circle cx="12" cy="5" r="1.5" />
-                <circle cx="12" cy="12" r="1.5" />
-                <circle cx="12" cy="19" r="1.5" />
-              </svg>
-            </button>
           </div>
         </div>
 
-        {/* ============================================================
-            INTERACTIVE REGION (cover → activity → comments)
-            ============================================================ */}
+        {/* INTERACTIVE REGION */}
         <WorkoutDetailInteractive
           workoutId={workout.id}
           coverUrl={coverUrl}
@@ -325,7 +334,9 @@ export default async function WorkoutDetailPage({ params }: Props) {
           initialRsvp={initialRsvp}
           initialParticipants={serializedParticipants}
           initialFeed={initialFeed}
+          initialComments={serializedComments}
           currentUser={meUser}
+          isOwner={isOwner}
         />
       </div>
     </SiteShell>
