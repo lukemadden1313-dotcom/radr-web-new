@@ -16,7 +16,8 @@ function formatShortDate(iso: string, hideWeekday = false): string {
   const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz });
   if (hideWeekday) return time;
   const day = d.toLocaleDateString("en-US", { weekday: "short", timeZone: tz });
-  return `${day} at ${time}`;
+  const monthDay = d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: tz });
+  return `${day}, ${monthDay} at ${time}`;
 }
 
 export function WorkoutListRow({
