@@ -1,26 +1,14 @@
 "use client";
 
-// TODO: All friend actions (add/accept/decline) are LOCAL ONLY — optimistic state
-// resets on reload. Wire to RPCs when backend ready.
-
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { AvatarImg } from "@/components/avatar-img";
 import BrandDot from "@/components/brand-dot";
-import {
-  getIncomingFriendRequests,
-  getSuggestedUsers,
-  getFriendStatus,
-  searchUsers,
-  MOCK_FRIENDS,
-} from "@/lib/mock-data";
-import type {
-  MockUser,
-  FriendStatus,
-} from "@/lib/mock-data";
+import { sendFriendRequest, acceptFriendRequest, declineFriendRequest } from "./actions";
+import type { FriendUser, IncomingRequest, RecommendedUser } from "./page";
 
 // ----------------------------------------------------------------
-// Avatar helpers (same pattern as dashboard/workouts/etc.)
+// Avatar helpers
 // ----------------------------------------------------------------
 
 const AVATAR_GRADIENTS: [string, string][] = [
@@ -71,7 +59,7 @@ function UserAvatar({
   size = 44,
   className = "",
 }: {
-  user: MockUser;
+  user: FriendUser;
   size?: number;
   className?: string;
 }) {
@@ -108,13 +96,7 @@ function UserAvatar({
 // Small components
 // ----------------------------------------------------------------
 
-function SectionHeader({
-  title,
-  count,
-}: {
-  title: string;
-  count?: number;
-}) {
+function SectionHeader({ title, count }: { title: string; count?: number }) {
   return (
     <h2 className="text-xl font-bold leading-tight">
       <span className="italic">{title}</span>
@@ -128,88 +110,6 @@ function SectionHeader({
   );
 }
 
-function MutualAvatarStack({
-  avatars,
-  count,
-}: {
-  avatars: MockUser[];
-  count: number;
-}) {
-  if (count === 0) return null;
-  return (
-    <div className="flex items-center gap-1.5 mt-0.5">
-      <div className="flex -space-x-1.5">
-        {avatars.slice(0, 3).map((u) => (
-          <UserAvatar
-            key={u.id}
-            user={u}
-            size={20}
-            className="border border-radr-bg"
-          />
-        ))}
-      </div>
-      <span className="text-xs text-radr-text-muted">
-        {count} mutual friend{count !== 1 ? "s" : ""}
-      </span>
-    </div>
-  );
-}
-
-function ActionButton({
-  status,
-  onAdd,
-}: {
-  status: FriendStatus | "requested";
-  onAdd?: () => void;
-}) {
-  if (status === "friends") {
-    return (
-      <span className="flex items-center gap-1 text-sm text-radr-text-muted">
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--radr-cobalt)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-        Friends
-      </span>
-    );
-  }
-  if (status === "request_sent" || status === "requested") {
-    return (
-      <span
-        className="inline-flex items-center gap-1 py-1.5 px-3.5 rounded-full text-sm font-semibold"
-        style={{
-          background: "var(--radr-surface-2)",
-          color: "var(--radr-text-muted)",
-        }}
-      >
-        {status === "requested" && (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        )}
-        {status === "requested" ? "Requested" : "Pending"}
-      </span>
-    );
-  }
-  return (
-    <button
-      onClick={onAdd}
-      className="inline-flex items-center py-1.5 px-3.5 rounded-full text-sm font-semibold text-white cursor-pointer transition-transform active:scale-95"
-      style={{ background: "var(--radr-cobalt)", border: "none" }}
-    >
-      + Add
-    </button>
-  );
-}
-
 function Divider() {
   return (
     <div
@@ -220,39 +120,99 @@ function Divider() {
 }
 
 // ----------------------------------------------------------------
+// Props
+// ----------------------------------------------------------------
+
+type Props = {
+  friends: FriendUser[];
+  incomingRequests: IncomingRequest[];
+  outgoingSentToIds: string[];
+  recommendations: RecommendedUser[];
+};
+
+// ----------------------------------------------------------------
 // Main content
 // ----------------------------------------------------------------
 
-export function FriendsContent() {
+export function FriendsContent({
+  friends,
+  incomingRequests,
+  outgoingSentToIds,
+  recommendations,
+}: Props) {
   const [search, setSearch] = useState("");
-  const [addedUserIds, setAddedUserIds] = useState<Set<string>>(new Set());
+  const [addedUserIds, setAddedUserIds] = useState<Set<string>>(
+    () => new Set(outgoingSentToIds),
+  );
   const [dismissedRequestIds, setDismissedRequestIds] = useState<Set<string>>(new Set());
+  const [isPending, startTransition] = useTransition();
 
   const hasSearch = search.trim().length > 0;
-  const searchResults = hasSearch ? searchUsers(search) : [];
-  const allIncomingRequests = getIncomingFriendRequests();
-  const visibleRequests = allIncomingRequests.filter((r) => !dismissedRequestIds.has(r.id));
-  const suggestedUsers = getSuggestedUsers();
-  const friends = MOCK_FRIENDS;
+
+  // Client-side search over friends + recommendations
+  const searchLower = search.toLowerCase().trim();
+  const searchResults = hasSearch
+    ? [
+        ...friends.map((f) => ({ user: f, source: "friend" as const })),
+        ...recommendations.map((r) => ({ user: r.user, source: "discover" as const })),
+      ].filter(
+        ({ user }) =>
+          user.full_name.toLowerCase().includes(searchLower) ||
+          user.username.toLowerCase().includes(searchLower),
+      )
+    : [];
+
+  const visibleRequests = incomingRequests.filter(
+    (r) => !dismissedRequestIds.has(r.friendship_id),
+  );
 
   function handleAdd(userId: string) {
-    // TODO: wire send_friend_request RPC
     setAddedUserIds((prev) => new Set(prev).add(userId));
+    startTransition(async () => {
+      const result = await sendFriendRequest(userId);
+      if (result.error) {
+        // Revert on failure
+        setAddedUserIds((prev) => {
+          const next = new Set(prev);
+          next.delete(userId);
+          return next;
+        });
+      }
+    });
   }
 
-  function handleAccept(requestId: string) {
-    // TODO: wire accept_friend_request RPC
-    setDismissedRequestIds((prev) => new Set(prev).add(requestId));
+  function handleAccept(friendshipId: string) {
+    setDismissedRequestIds((prev) => new Set(prev).add(friendshipId));
+    startTransition(async () => {
+      const result = await acceptFriendRequest(friendshipId);
+      if (result.error) {
+        setDismissedRequestIds((prev) => {
+          const next = new Set(prev);
+          next.delete(friendshipId);
+          return next;
+        });
+      }
+    });
   }
 
-  function handleDecline(requestId: string) {
-    // TODO: wire decline_friend_request RPC
-    setDismissedRequestIds((prev) => new Set(prev).add(requestId));
+  function handleDecline(friendshipId: string) {
+    setDismissedRequestIds((prev) => new Set(prev).add(friendshipId));
+    startTransition(async () => {
+      const result = await declineFriendRequest(friendshipId);
+      if (result.error) {
+        setDismissedRequestIds((prev) => {
+          const next = new Set(prev);
+          next.delete(friendshipId);
+          return next;
+        });
+      }
+    });
   }
 
-  function resolveStatus(userId: string): FriendStatus | "requested" {
-    if (addedUserIds.has(userId)) return "requested";
-    return getFriendStatus(userId);
+  function friendStatus(userId: string): "friends" | "request_sent" | "none" {
+    if (friends.some((f) => f.id === userId)) return "friends";
+    if (addedUserIds.has(userId)) return "request_sent";
+    return "none";
   }
 
   return (
@@ -322,8 +282,8 @@ export function FriendsContent() {
             </p>
           ) : (
             <div className="mt-3">
-              {searchResults.map((user, i) => {
-                const status = resolveStatus(user.id);
+              {searchResults.map(({ user }, i) => {
+                const status = friendStatus(user.id);
                 return (
                   <div key={user.id}>
                     {i > 0 && <Divider />}
@@ -339,10 +299,29 @@ export function FriendsContent() {
                           @{user.username}
                         </p>
                       </div>
-                      <ActionButton
-                        status={status}
-                        onAdd={() => handleAdd(user.id)}
-                      />
+                      {status === "friends" ? (
+                        <span className="flex items-center gap-1 text-sm text-radr-text-muted">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--radr-cobalt)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          Friends
+                        </span>
+                      ) : status === "request_sent" ? (
+                        <span
+                          className="inline-flex items-center py-1.5 px-3.5 rounded-full text-sm font-semibold"
+                          style={{ background: "var(--radr-surface-2)", color: "var(--radr-text-muted)" }}
+                        >
+                          Pending
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleAdd(user.id)}
+                          className="inline-flex items-center py-1.5 px-3.5 rounded-full text-sm font-semibold text-white cursor-pointer transition-transform active:scale-95"
+                          style={{ background: "var(--radr-cobalt)", border: "none" }}
+                        >
+                          + Add
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -361,7 +340,7 @@ export function FriendsContent() {
               />
               <div className="mt-3">
                 {visibleRequests.map((req, i) => (
-                  <div key={req.id}>
+                  <div key={req.friendship_id}>
                     {i > 0 && <Divider />}
                     <div className="flex items-center gap-3 py-3">
                       <Link href={`/profile/${req.user.username}`} className="shrink-0">
@@ -374,32 +353,19 @@ export function FriendsContent() {
                         <p className="text-sm text-radr-text-muted truncate">
                           @{req.user.username}
                         </p>
-                        {req.mutual_friends_count > 0 && (
-                          <p className="text-xs text-radr-text-muted mt-0.5">
-                            {req.mutual_friends_count} mutual friend
-                            {req.mutual_friends_count !== 1 ? "s" : ""}
-                          </p>
-                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleAccept(req.id)}
+                          onClick={() => handleAccept(req.friendship_id)}
                           className="py-1.5 px-3 rounded-full text-sm font-semibold text-white cursor-pointer transition-transform active:scale-95"
-                          style={{
-                            background: "var(--radr-cobalt)",
-                            border: "none",
-                          }}
+                          style={{ background: "var(--radr-cobalt)", border: "none" }}
                         >
                           Accept
                         </button>
                         <button
-                          onClick={() => handleDecline(req.id)}
+                          onClick={() => handleDecline(req.friendship_id)}
                           className="py-1.5 px-3 rounded-full text-sm font-semibold cursor-pointer transition-transform active:scale-95"
-                          style={{
-                            background: "var(--radr-surface-2)",
-                            color: "var(--radr-text)",
-                            border: "none",
-                          }}
+                          style={{ background: "var(--radr-surface-2)", color: "var(--radr-text)", border: "none" }}
                         >
                           Decline
                         </button>
@@ -412,59 +378,65 @@ export function FriendsContent() {
           )}
 
           {/* Discover section */}
-          <div className="max-w-2xl mx-auto px-6 mt-8">
-            <SectionHeader
-              title="Discover"
-              count={suggestedUsers.length}
-            />
-            <p className="text-sm text-radr-text-muted mt-1">
-              People in your network
-            </p>
-            {suggestedUsers.length === 0 ? (
-              <p className="text-center text-radr-text-muted italic mt-8">
-                No one new to suggest right now.
+          {recommendations.length > 0 && (
+            <div className="max-w-2xl mx-auto px-6 mt-8">
+              <SectionHeader title="Discover" count={recommendations.length} />
+              <p className="text-sm text-radr-text-muted mt-1">
+                People in your network
               </p>
-            ) : (
               <div className="mt-3">
-                {suggestedUsers.map((s, i) => {
-                  const status = resolveStatus(s.user.id);
+                {recommendations.map((rec, i) => {
+                  const status = friendStatus(rec.user.id);
                   return (
-                    <div key={s.user.id}>
+                    <div key={rec.user.id}>
                       {i > 0 && <Divider />}
                       <div className="flex items-center gap-3 py-3">
-                        <Link href={`/profile/${s.user.username}`} className="shrink-0">
-                          <UserAvatar user={s.user} />
+                        <Link href={`/profile/${rec.user.username}`} className="shrink-0">
+                          <UserAvatar user={rec.user} />
                         </Link>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-base text-radr-text truncate">
-                            {s.user.full_name}
+                            {rec.user.full_name}
                           </p>
                           <p className="text-sm text-radr-text-muted truncate">
-                            @{s.user.username}
+                            @{rec.user.username}
                           </p>
-                          <MutualAvatarStack
-                            avatars={s.mutual_friend_avatars}
-                            count={s.mutual_friends_count}
-                          />
+                          {rec.mutual_count > 0 && (
+                            <p className="text-xs text-radr-text-muted mt-0.5">
+                              {rec.mutual_count} mutual friend{rec.mutual_count !== 1 ? "s" : ""}
+                            </p>
+                          )}
                         </div>
-                        <ActionButton
-                          status={status}
-                          onAdd={() => handleAdd(s.user.id)}
-                        />
+                        {status === "request_sent" ? (
+                          <span
+                            className="inline-flex items-center py-1.5 px-3.5 rounded-full text-sm font-semibold"
+                            style={{ background: "var(--radr-surface-2)", color: "var(--radr-text-muted)" }}
+                          >
+                            Pending
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleAdd(rec.user.id)}
+                            className="inline-flex items-center py-1.5 px-3.5 rounded-full text-sm font-semibold text-white cursor-pointer transition-transform active:scale-95"
+                            style={{ background: "var(--radr-cobalt)", border: "none" }}
+                          >
+                            + Add
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Your friends section */}
           {friends.length > 0 && (
             <div className="max-w-2xl mx-auto px-6 mt-8">
               <SectionHeader title="Your friends" count={friends.length} />
               <div className="mt-3">
-                {friends.slice(0, 20).map((friend, i) => (
+                {friends.map((friend, i) => (
                   <div key={friend.id}>
                     {i > 0 && <Divider />}
                     <div className="flex items-center gap-3 py-3">
