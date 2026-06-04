@@ -1,14 +1,32 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SiteShell } from "@/components/layout/site-shell";
 import { AvatarImg } from "@/components/avatar-img";
 import BrandDot from "@/components/brand-dot";
-import {
-  MOCK_NOTIFICATIONS,
-  getNotificationActor,
-  getNotificationLink,
-  type MockUser,
-  type MockNotification,
-} from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/server";
+
+// ----------------------------------------------------------------
+// Types
+// ----------------------------------------------------------------
+
+type DbNotification = {
+  id: string;
+  type: string;
+  message: string | null;
+  actor_id: string | null;
+  entity_id: string | null;
+  related_id: string | null;
+  is_read: boolean;
+  created_at: string;
+};
+
+type NotifUser = {
+  id: string;
+  full_name: string;
+  username: string;
+  avatar_url: string | null;
+  gradient_seed: string;
+};
 
 // ----------------------------------------------------------------
 // Helpers
@@ -28,6 +46,10 @@ function avatarGradient(seed: string): string {
   return `linear-gradient(135deg, ${from}, ${to})`;
 }
 
+function initial(name: string | null): string {
+  return (name || "?").charAt(0).toUpperCase();
+}
+
 function timeAgo(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
@@ -39,8 +61,7 @@ function timeAgo(iso: string): string {
   return Math.floor(diff / 604800) + "w";
 }
 
-// Notification icon per type (matches iOS NotificationCategory)
-function notificationIcon(type: MockNotification["type"]): { icon: string; color: string } {
+function notificationIcon(type: string): { icon: string; color: string } {
   switch (type) {
     case "friend_request": return { icon: "\ud83d\udc64", color: "var(--radr-cobalt)" };
     case "friend_request_accepted": return { icon: "\u2705", color: "var(--radr-green)" };
@@ -53,6 +74,48 @@ function notificationIcon(type: MockNotification["type"]): { icon: string; color
     case "upcoming_activity": return { icon: "\u23f0", color: "#f97316" };
     case "profile_view": return { icon: "\ud83d\udc41\ufe0f", color: "#a855f7" };
     default: return { icon: "\ud83d\udd14", color: "var(--radr-text-muted)" };
+  }
+}
+
+function notificationLink(n: DbNotification, actorMap: Map<string, NotifUser>): string {
+  switch (n.type) {
+    case "friend_request":
+    case "friend_request_accepted":
+    case "profile_view": {
+      const actor = n.actor_id ? actorMap.get(n.actor_id) : undefined;
+      return actor ? `/profile/${actor.username}` : "#";
+    }
+    case "workout_join":
+    case "workout_update":
+    case "workout_invite":
+    case "friend_workout":
+    case "workout_reaction":
+    case "workout_comment":
+    case "upcoming_activity":
+      return n.entity_id ? `/workouts/${n.entity_id}` : "#";
+    default:
+      return "#";
+  }
+}
+
+// Build a readable fallback message if the DB `message` column is empty
+function fallbackMessage(n: DbNotification, actorMap: Map<string, NotifUser>): string {
+  const actorName = n.actor_id
+    ? (actorMap.get(n.actor_id)?.full_name ?? "Someone")
+    : "Someone";
+
+  switch (n.type) {
+    case "friend_request": return `${actorName} sent you a friend request`;
+    case "friend_request_accepted": return `${actorName} accepted your friend request`;
+    case "workout_join": return `${actorName} joined a workout`;
+    case "workout_invite": return `${actorName} invited you to a workout`;
+    case "workout_update": return `${actorName} updated a workout`;
+    case "workout_reaction": return `${actorName} reacted to your workout`;
+    case "workout_comment": return `${actorName} commented on a workout`;
+    case "friend_workout": return `${actorName} is working out`;
+    case "upcoming_activity": return "You have an upcoming workout";
+    case "profile_view": return `${actorName} viewed your profile`;
+    default: return "New notification";
   }
 }
 
@@ -91,7 +154,7 @@ function UserAvatar({
   size = 40,
   className = "",
 }: {
-  user: MockUser;
+  user: NotifUser;
   size?: number;
   className?: string;
 }) {
@@ -135,116 +198,74 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-// iOS notifications use pre-rendered `message`. Display it directly.
-function NotificationText({ n }: { n: MockNotification }) {
-  return (
-    <span className="text-radr-text-muted">
-      {n.message}
-    </span>
-  );
-}
-
-function NotificationRow({ n, showBorder }: { n: MockNotification; showBorder: boolean }) {
-  const href = getNotificationLink(n);
-  const isFriendRequest = n.type === "friend_request";
-  const actor = getNotificationActor(n);
-  const { icon } = notificationIcon(n.type);
-
-  return (
-    <Link
-      href={href}
-      className="flex items-start gap-3 py-4 no-underline text-inherit transition-colors"
-      style={{
-        borderTop: showBorder ? "1px solid rgba(255,255,247,0.08)" : undefined,
-      }}
-    >
-      {/* Avatar with unread dot */}
-      <div className="relative shrink-0">
-        {actor ? (
-          <UserAvatar user={actor} size={40} />
-        ) : (
-          <span
-            className="rounded-full shrink-0 flex items-center justify-center text-lg"
-            style={{ width: 40, height: 40, background: "var(--radr-surface-2)" }}
-          >
-            {icon}
-          </span>
-        )}
-        {!n.is_read && (
-          <span
-            className="absolute rounded-full"
-            style={{
-              top: -1,
-              right: -1,
-              width: 8,
-              height: 8,
-              background: "var(--radr-cobalt)",
-              border: "2px solid var(--radr-bg)",
-            }}
-          />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm leading-snug">
-          <NotificationText n={n} />
-        </p>
-        <p className="text-xs mt-0.5" style={{ color: "var(--radr-text-dim)" }}>
-          {timeAgo(n.created_at)}
-        </p>
-      </div>
-
-      {/* Right action */}
-      <div className="shrink-0 flex items-center pt-1">
-        {isFriendRequest ? (
-          <div className="flex items-center gap-2">
-            {/* TODO: wire accept action */}
-            <button
-              className="py-1 px-3 rounded-full text-xs font-semibold text-white cursor-pointer"
-              style={{ background: "var(--radr-cobalt)", border: "none" }}
-            >
-              Accept
-            </button>
-            {/* TODO: wire decline action */}
-            <button
-              className="py-1 px-3 rounded-full text-xs font-semibold cursor-pointer"
-              style={{ background: "var(--radr-surface-1)", color: "var(--radr-text-muted)", border: "1px solid var(--radr-border)" }}
-            >
-              Decline
-            </button>
-          </div>
-        ) : (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-dim">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        )}
-      </div>
-    </Link>
-  );
-}
-
 // ----------------------------------------------------------------
 // Page
 // ----------------------------------------------------------------
 
-export default function NotificationsPage() {
+export default async function NotificationsPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  // Fetch notifications (newest first, limit 50)
+  const { data: notifData } = await supabase
+    .from("notifications")
+    .select("id, type, message, actor_id, entity_id, related_id, is_read, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const notifications = (notifData ?? []) as DbNotification[];
+
+  // Collect actor IDs and fetch their profiles
+  const actorIds = [...new Set(
+    notifications.map((n) => n.actor_id).filter(Boolean) as string[],
+  )];
+
+  const actorMap = new Map<string, NotifUser>();
+  if (actorIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, username, avatar_url")
+      .in("id", actorIds);
+
+    for (const p of profiles ?? []) {
+      actorMap.set(p.id, {
+        id: p.id,
+        full_name: p.full_name ?? "User",
+        username: p.username ?? "user",
+        avatar_url: p.avatar_url,
+        gradient_seed: initial(p.full_name),
+      });
+    }
+  }
+
+  // Mark unread notifications as read (fire-and-forget)
+  const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
+  if (unreadIds.length > 0) {
+    supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .in("id", unreadIds)
+      .then(({ error }) => {
+        if (error) {
+          console.warn("Failed to mark notifications as read (likely RLS):", error.message);
+        }
+      });
+  }
+
+  // Split into recent (last 24h) and earlier
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-  const sorted = [...MOCK_NOTIFICATIONS].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  );
-
-  const recent = sorted.filter((n) => new Date(n.created_at) >= oneDayAgo);
-  const earlier = sorted.filter((n) => new Date(n.created_at) < oneDayAgo);
-  const unreadCount = sorted.filter((n) => !n.is_read).length;
+  const recent = notifications.filter((n) => new Date(n.created_at) >= oneDayAgo);
+  const earlier = notifications.filter((n) => new Date(n.created_at) < oneDayAgo);
+  const unreadCount = unreadIds.length;
 
   return (
     <SiteShell glow="cobalt">
       <div className="max-w-2xl mx-auto">
         {/* ============================================================
-            1. BACK + MARK ALL AS READ ROW
+            1. BACK ROW
             ============================================================ */}
         <div
           className="flex items-center justify-between px-6 py-3"
@@ -259,16 +280,6 @@ export default function NotificationsPage() {
             </svg>
             <span className="text-sm font-medium">Back</span>
           </Link>
-
-          {unreadCount > 0 && (
-            // TODO: wire mark-all-as-read action
-            <button
-              className="py-1.5 px-3 rounded-full text-xs font-medium text-radr-text-muted hover:text-radr-text transition-colors cursor-pointer"
-              style={{ background: "transparent", border: "1px solid var(--radr-border)" }}
-            >
-              Mark all as read
-            </button>
-          )}
         </div>
 
         {/* ============================================================
@@ -283,23 +294,76 @@ export default function NotificationsPage() {
           </h1>
           <p className="mt-2 text-base text-radr-text-muted">
             {unreadCount > 0
-              ? `${unreadCount} new this week`
-              : "All caught up."}
+              ? `${unreadCount} new`
+              : notifications.length > 0
+                ? "All caught up."
+                : "Nothing yet."}
           </p>
         </div>
 
         {/* ============================================================
             3. NOTIFICATION LIST
             ============================================================ */}
-        {sorted.length > 0 ? (
+        {notifications.length > 0 ? (
           <div className="px-6 mt-6">
             {/* Recent group */}
             {recent.length > 0 && (
               <div className="mb-8">
                 <SectionHeader title="Recent" />
-                {recent.map((n, i) => (
-                  <NotificationRow key={n.id} n={n} showBorder={i > 0} />
-                ))}
+                {recent.map((n, i) => {
+                  const actor = n.actor_id ? actorMap.get(n.actor_id) : undefined;
+                  const href = notificationLink(n, actorMap);
+                  const { icon } = notificationIcon(n.type);
+                  const message = n.message || fallbackMessage(n, actorMap);
+
+                  return (
+                    <Link
+                      key={n.id}
+                      href={href}
+                      className="flex items-start gap-3 py-4 no-underline text-inherit transition-colors"
+                      style={{
+                        borderTop: i > 0 ? "1px solid rgba(255,255,247,0.08)" : undefined,
+                      }}
+                    >
+                      <div className="relative shrink-0">
+                        {actor ? (
+                          <UserAvatar user={actor} size={40} />
+                        ) : (
+                          <span
+                            className="rounded-full shrink-0 flex items-center justify-center text-lg"
+                            style={{ width: 40, height: 40, background: "var(--radr-surface-2)" }}
+                          >
+                            {icon}
+                          </span>
+                        )}
+                        {!n.is_read && (
+                          <span
+                            className="absolute rounded-full"
+                            style={{
+                              top: -1, right: -1,
+                              width: 8, height: 8,
+                              background: "var(--radr-cobalt)",
+                              border: "2px solid var(--radr-bg)",
+                            }}
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm leading-snug text-radr-text-muted">
+                          {message}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: "var(--radr-text-dim)" }}>
+                          {timeAgo(n.created_at)}
+                        </p>
+                      </div>
+                      <div className="shrink-0 flex items-center pt-1">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-dim">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
 
@@ -307,9 +371,60 @@ export default function NotificationsPage() {
             {earlier.length > 0 && (
               <div>
                 <SectionHeader title="Earlier" />
-                {earlier.map((n, i) => (
-                  <NotificationRow key={n.id} n={n} showBorder={i > 0} />
-                ))}
+                {earlier.map((n, i) => {
+                  const actor = n.actor_id ? actorMap.get(n.actor_id) : undefined;
+                  const href = notificationLink(n, actorMap);
+                  const { icon } = notificationIcon(n.type);
+                  const message = n.message || fallbackMessage(n, actorMap);
+
+                  return (
+                    <Link
+                      key={n.id}
+                      href={href}
+                      className="flex items-start gap-3 py-4 no-underline text-inherit transition-colors"
+                      style={{
+                        borderTop: i > 0 ? "1px solid rgba(255,255,247,0.08)" : undefined,
+                      }}
+                    >
+                      <div className="relative shrink-0">
+                        {actor ? (
+                          <UserAvatar user={actor} size={40} />
+                        ) : (
+                          <span
+                            className="rounded-full shrink-0 flex items-center justify-center text-lg"
+                            style={{ width: 40, height: 40, background: "var(--radr-surface-2)" }}
+                          >
+                            {icon}
+                          </span>
+                        )}
+                        {!n.is_read && (
+                          <span
+                            className="absolute rounded-full"
+                            style={{
+                              top: -1, right: -1,
+                              width: 8, height: 8,
+                              background: "var(--radr-cobalt)",
+                              border: "2px solid var(--radr-bg)",
+                            }}
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm leading-snug text-radr-text-muted">
+                          {message}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: "var(--radr-text-dim)" }}>
+                          {timeAgo(n.created_at)}
+                        </p>
+                      </div>
+                      <div className="shrink-0 flex items-center pt-1">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-radr-text-dim">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
