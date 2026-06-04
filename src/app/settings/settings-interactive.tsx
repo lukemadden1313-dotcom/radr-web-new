@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { signOut } from "./actions";
 
 // ----------------------------------------------------------------
 // Interactive Toggle — visual on/off with useState
@@ -171,11 +172,12 @@ function OpenInAppRow({
 }
 
 // ----------------------------------------------------------------
-// Log out button — TODO: wire Supabase Auth signOut()
+// Log out button
 // ----------------------------------------------------------------
 
 function LogOutButton() {
   const [confirming, setConfirming] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   return (
     <button
@@ -184,14 +186,17 @@ function LogOutButton() {
           setConfirming(true);
           return;
         }
-        // TODO: wire Supabase Auth signOut() — currently visual-only
-        window.location.href = "/";
+        startTransition(async () => {
+          await signOut();
+        });
       }}
+      disabled={isPending}
       className="w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 text-base font-medium cursor-pointer"
       style={{
         background: "var(--radr-surface-1)",
         border: "none",
         color: "#EF4444",
+        opacity: isPending ? 0.6 : 1,
       }}
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -199,7 +204,7 @@ function LogOutButton() {
         <polyline points="16 17 21 12 16 7" />
         <line x1="21" y1="12" x2="9" y2="12" />
       </svg>
-      {confirming ? "Tap again to confirm" : "Log out"}
+      {isPending ? "Signing out..." : confirming ? "Tap again to confirm" : "Log out"}
     </button>
   );
 }

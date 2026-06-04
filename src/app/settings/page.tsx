@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SiteShell } from "@/components/layout/site-shell";
 import { AvatarImg } from "@/components/avatar-img";
 import BrandDot from "@/components/brand-dot";
-import { CURRENT_USER, type MockUser } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/server";
 import { InteractiveToggleRow, OpenInAppRow, LogOutButton } from "./settings-interactive";
 
 // ----------------------------------------------------------------
@@ -47,7 +48,14 @@ function AvatarFallback({
   );
 }
 
-function UserAvatar({ user, size = 56 }: { user: MockUser; size?: number }) {
+type SettingsUser = {
+  full_name: string;
+  username: string;
+  avatar_url: string | null;
+  gradient_seed: string;
+};
+
+function UserAvatar({ user, size = 56 }: { user: SettingsUser; size?: number }) {
   if (user.avatar_url) {
     return (
       <AvatarImg
@@ -305,7 +313,26 @@ function ExternalRow({
 // Page
 // ----------------------------------------------------------------
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, username, avatar_url")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) redirect("/sign-in");
+
+  const currentUser: SettingsUser = {
+    full_name: profile.full_name ?? "",
+    username: profile.username ?? "",
+    avatar_url: profile.avatar_url ?? null,
+    gradient_seed: (profile.full_name || "?").charAt(0).toUpperCase(),
+  };
+
   return (
     <SiteShell glow="cobalt">
       <div className="max-w-2xl mx-auto">
@@ -354,17 +381,17 @@ export default function SettingsPage() {
             ============================================================ */}
         <div className="px-6 mt-6">
           <Link
-            href={`/profile/${CURRENT_USER.username}`}
+            href={`/profile/${currentUser.username}`}
             className="flex items-center gap-3 p-4 rounded-2xl no-underline text-inherit hover:bg-radr-surface-2 transition-colors"
             style={{ background: "var(--radr-surface-1)" }}
           >
-            <UserAvatar user={CURRENT_USER} size={56} />
+            <UserAvatar user={currentUser} size={56} />
             <div className="flex-1 min-w-0">
               <p className="text-base font-semibold text-radr-text">
-                {CURRENT_USER.full_name}
+                {currentUser.full_name}
               </p>
               <p className="text-sm" style={{ color: "var(--radr-text-muted)" }}>
-                @{CURRENT_USER.username}
+                @{currentUser.username}
               </p>
             </div>
             <IconChevronRight />
